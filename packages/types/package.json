@@ -1,0 +1,9 @@
+{
+  "name": "@tradefinance/types",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "scripts": {},
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

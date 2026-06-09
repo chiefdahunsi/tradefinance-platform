@@ -1,0 +1,284 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SME_OWNER
+  ANALYST
+  ADMIN
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  KYC_PENDING
+  KYC_VERIFIED
+  KYC_FAILED
+  DOCUMENTS_PENDING
+  UNDER_REVIEW
+  APPROVED
+  DECLINED
+  MORE_INFO_REQUIRED
+}
+
+enum KYCStatus {
+  PENDING
+  PASSED
+  FAILED
+}
+
+enum DocumentType {
+  CAC_CERTIFICATE
+  CAC_STATUS_REPORT
+  MEMART
+  AUDITED_FINANCIALS
+  BANK_STATEMENT
+  TRADE_CONTRACT
+  INVOICE
+  LETTER_OF_CREDIT
+  WAREHOUSE_RECEIPT
+  DIRECTORS_ID
+  UTILITY_BILL
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CommodityType {
+  COCOA
+  CASHEW
+  SESAME
+  SOYBEAN
+  PALM_OIL
+  GROUNDNUT
+  COTTON
+  GINGER
+  RUBBER
+  OTHER
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  role         UserRole @default(SME_OWNER)
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business       Business?
+  analystReviews AnalystReview[]
+}
+
+// ─── Business ────────────────────────────────────────────────────────────────
+
+model Business {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  registeredName   String
+  tradingName      String?
+  cacNumber        String    @unique
+  taxId            String?
+  dateIncorporated DateTime?
+  businessType     String
+  sector           String
+
+  address  String
+  city     String
+  state    String
+  website  String?
+
+  commodities      CommodityType[]
+  yearsInOperation Int?
+  annualTurnover   Decimal?        @db.Decimal(18, 2)
+  exportMarkets    String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  directors    Director[]
+  applications LoanApplication[]
+  kycChecks    KYCCheck[]
+}
+
+// ─── Directors ───────────────────────────────────────────────────────────────
+
+model Director {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  firstName    String
+  lastName     String
+  bvn          String
+  nin          String?
+  phone        String
+  email        String
+  nationality  String  @default("Nigerian")
+  percentOwned Decimal @db.Decimal(5, 2)
+  isSignatory  Boolean @default(false)
+
+  kycStatus    KYCStatus @default(PENDING)
+  kycReference String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Loan Applications ───────────────────────────────────────────────────────
+
+model LoanApplication {
+  id              String            @id @default(cuid())
+  referenceNumber String            @unique @default(cuid())
+  businessId      String
+  business        Business          @relation(fields: [businessId], references: [id])
+
+  status ApplicationStatus @default(DRAFT)
+
+  amountRequested  Decimal       @db.Decimal(18, 2)
+  tenor            Int
+  purpose          String
+  commodityType    CommodityType
+  tradeDescription String
+
+  collateralType    String?
+  collateralValue   Decimal? @db.Decimal(18, 2)
+  collateralDetails String?
+
+  submittedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  documents     Document[]
+  kycChecks     KYCCheck[]
+  creditProfile CreditProfile?
+  analystReview AnalystReview?
+}
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+model Document {
+  id            String          @id @default(cuid())
+  applicationId String
+  application   LoanApplication @relation(fields: [applicationId], references: [id])
+
+  type          DocumentType
+  status        DocumentStatus @default(PENDING)
+  fileName      String
+  fileKey       String
+  fileUrl       String
+  fileSize      Int
+  mimeType      String
+  extractedData Json?
+  notes         String?
+
+  uploadedAt DateTime  @default(now())
+  reviewedAt DateTime?
+}
+
+// ─── KYC Checks ──────────────────────────────────────────────────────────────
+
+model KYCCheck {
+  id            String           @id @default(cuid())
+  businessId    String
+  business      Business         @relation(fields: [businessId], references: [id])
+  applicationId String?
+  application   LoanApplication? @relation(fields: [applicationId], references: [id])
+
+  checkType   String
+  provider    String
+  reference   String?
+  status      KYCStatus @default(PENDING)
+  rawResponse Json?
+  score       Int?
+  notes       String?
+
+  checkedAt DateTime @default(now())
+}
+
+// ─── Credit Profile ──────────────────────────────────────────────────────────
+
+model CreditProfile {
+  id            String          @id @default(cuid())
+  applicationId String          @unique
+  application   LoanApplication @relation(fields: [applicationId], references: [id])
+
+  totalScore     Int
+  scoreGrade     String
+  recommendation String
+
+  kycScore          Int
+  financialScore    Int
+  tradeHistoryScore Int
+  collateralScore   Int
+  bureauScore       Int?
+
+  bureauProvider  String?
+  bureauReference String?
+  bureauRawData   Json?
+
+  summary    String
+  strengths  String[]
+  risks      String[]
+  conditions String[]
+
+  generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Analyst Review ──────────────────────────────────────────────────────────
+
+model AnalystReview {
+  id            String          @id @default(cuid())
+  applicationId String          @unique
+  application   LoanApplication @relation(fields: [applicationId], references: [id])
+  analystId     String
+  analyst       User            @relation(fields: [analystId], references: [id])
+
+  decision       String?
+  amountApproved Decimal? @db.Decimal(18, 2)
+  tenorApproved  Int?
+  interestRate   Decimal? @db.Decimal(5, 2)
+  conditions     String[]
+
+  notes         String?
+  internalNotes String?
+
+  assignedAt DateTime  @default(now())
+  decidedAt  DateTime?
+  updatedAt  DateTime  @updatedAt
+}
+
+// ─── Audit Log ───────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  actorId    String?
+  actorEmail String?
+  changes    Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
