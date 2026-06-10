@@ -725,7 +725,7 @@ function BVNResponseView({ data }: { data: Record<string, any> }) {
   const entity = data?.entity ?? data;
 
   const fields = [
-    { label: "Full Name",          value: entity?.full_name ?? `${entity?.first_name ?? ""} ${entity?.last_name ?? ""}`.trim() || undefined },
+    { label: "Full Name",          value: entity?.full_name ?? (`${entity?.first_name ?? ""} ${entity?.last_name ?? ""}`.trim() || undefined) },
     { label: "BVN",                value: entity?.bvn },
     { label: "Date of Birth",      value: entity?.date_of_birth ?? entity?.dateOfBirth },
     { label: "Phone",              value: entity?.phone_number ?? entity?.phone },
