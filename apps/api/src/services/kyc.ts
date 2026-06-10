@@ -75,8 +75,14 @@ export async function verifyCAC(
     };
   }
 
-  // Try advance endpoint first (rc_number only), always fall back to basic with company_name
+  // Dojah expects digits only — strip RC/BN/IT prefix if present
+  const cleanRc = rcNumber.replace(/^(RC|BN|IT)\s*/i, "").trim();
+  console.log(`CAC lookup: raw="${rcNumber}" clean="${cleanRc}" company="${companyName}"`);
+
+  // Try all combinations: advance (no company_name) first, then basic with company_name
   const endpoints = [
+    { url: `/api/v1/kyc/cac/advance`, params: { rc_number: cleanRc } },
+    { url: `/api/v1/kyc/cac`,         params: { rc_number: cleanRc, company_name: companyName } },
     { url: `/api/v1/kyc/cac/advance`, params: { rc_number: rcNumber } },
     { url: `/api/v1/kyc/cac`,         params: { rc_number: rcNumber, company_name: companyName } },
   ];
@@ -86,11 +92,12 @@ export async function verifyCAC(
   for (const endpoint of endpoints) {
     try {
       const { data } = await dojah.get(endpoint.url, { params: endpoint.params });
-      console.log(`CAC [${endpoint.url}] response:`, JSON.stringify(data).slice(0, 300));
+      console.log(`CAC [${endpoint.url}] rc=${endpoint.params.rc_number} response:`, JSON.stringify(data).slice(0, 400));
 
       const entity = data?.entity;
       if (!entity) {
-        return { status: "FAILED", reference: rcNumber, message: "CAC number not found in registry" };
+        lastError = "CAC number not found in registry";
+        continue;
       }
 
       return {
@@ -101,16 +108,12 @@ export async function verifyCAC(
       };
     } catch (err: any) {
       const errData = err?.response?.data;
-      console.error(`CAC [${endpoint.url}] failed (${err?.response?.status}):`, JSON.stringify(errData || err.message).slice(0, 300));
+      const status = err?.response?.status;
+      console.error(`CAC [${endpoint.url}] rc=${endpoint.params.rc_number} failed (${status}):`, JSON.stringify(errData || err.message).slice(0, 400));
 
-      // Extract the most useful error message
-      lastError = errData?.error ||
-        errData?.message ||
-        Object.entries(errData || {}).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ") ||
-        err.message ||
-        "CAC verification failed";
-
-      // Always continue to next endpoint — don't break early
+      const msg = errData?.error || errData?.message || err.message || "CAC verification failed";
+      // If Dojah says "unable to reach service", it's a transient upstream error — keep trying
+      lastError = msg;
       continue;
     }
   }
