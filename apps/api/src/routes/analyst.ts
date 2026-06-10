@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma, Prisma } from "@tradefinance/db";
 import { requireAuth, AuthRequest, requireRole } from "../middleware/auth";
 import { generateCreditProfile } from "../services/scoring";
-import { sendDecision } from "../services/email";
+import { sendDecision, sendUnderReview } from "../services/email";
 import { audit, AuditAction } from "../services/audit";
 
 const router = Router();
@@ -46,6 +46,22 @@ router.post(
     });
 
     audit({ entityType: "LoanApplication", entityId: req.params.applicationId, action: AuditAction.APPLICATION_ASSIGNED, actorId: req.user!.userId, req });
+
+    // Notify SME (non-blocking)
+    const fullApp = await prisma.loanApplication.findUnique({
+      where: { id: req.params.applicationId },
+      include: { business: { include: { user: true } } },
+    });
+    const analyst = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (fullApp && analyst) {
+      sendUnderReview({
+        to: fullApp.business.user.email,
+        firstName: fullApp.business.user.firstName,
+        businessName: fullApp.business.registeredName,
+        referenceNumber: fullApp.referenceNumber,
+        analystName: `${analyst.firstName} ${analyst.lastName}`,
+      }).catch((err) => console.error("Under review email error:", err));
+    }
 
     return res.json({ success: true, data: review });
   }

@@ -143,6 +143,61 @@ export async function sendKYCResult(opts: {
   );
 }
 
+export async function sendPasswordReset(opts: {
+  to: string;
+  firstName: string;
+  resetUrl: string;
+}) {
+  const body = `
+    <p style="margin:0 0 16px;font-size:15px;color:#0f172a;">Dear <strong>${opts.firstName}</strong>,</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
+      We received a request to reset your password. Click the button below to choose a new password.
+      This link expires in <strong>1 hour</strong>.
+    </p>
+    <div style="text-align:center;">
+      ${btn("Reset My Password", opts.resetUrl, "#0f172a")}
+    </div>
+    <p style="margin:24px 0 0;font-size:13px;color:#94a3b8;">
+      If you did not request a password reset, you can safely ignore this email.
+      Your password will not change.
+    </p>
+  `;
+  await send(opts.to, "Reset your password", baseTemplate("Password Reset", body));
+}
+
+export async function sendUnderReview(opts: {
+  to: string;
+  firstName: string;
+  businessName: string;
+  referenceNumber: string;
+  analystName: string;
+}) {
+  const ref = opts.referenceNumber.slice(0, 8).toUpperCase();
+  const body = `
+    <p style="margin:0 0 16px;font-size:15px;color:#0f172a;">Dear <strong>${opts.firstName}</strong>,</p>
+    <div style="margin-bottom:20px;padding:16px;border-radius:8px;background:#f0f9ff;border:1px solid #bae6fd;">
+      <p style="margin:0;font-size:14px;font-weight:600;color:#0369a1;">👤 Your application is now under review</p>
+    </div>
+    <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
+      Great news! A credit analyst has been assigned to your facility application and the review process has begun.
+      You will be notified as soon as a decision is made.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+      ${infoRow("Reference", ref)}
+      ${infoRow("Business", opts.businessName)}
+      ${infoRow("Assigned Analyst", opts.analystName)}
+    </table>
+    <p style="margin:20px 0 0;font-size:13px;color:#64748b;">
+      You can track your application status at any time by logging into your dashboard.
+    </p>
+  `;
+  await send(
+    opts.to,
+    `Application Under Review — ${ref}`,
+    baseTemplate("Application Under Review", body)
+  );
+}
+
 export async function sendDecision(opts: {
   to: string;
   firstName: string;

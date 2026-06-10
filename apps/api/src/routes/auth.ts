@@ -1,11 +1,13 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { z } from "zod";
 import { prisma } from "@tradefinance/db";
 import { requireAuth, requireRole, AuthRequest } from "../middleware/auth";
 import { authLimiter, registerLimiter } from "../middleware/rate-limit";
 import { audit, AuditAction } from "../services/audit";
+import { sendPasswordReset } from "../services/email";
 
 const router = Router();
 
@@ -156,6 +158,74 @@ router.post("/analyst-login", authLimiter, async (req: Request, res: Response) =
       token: signToken(user),
     },
   });
+});
+
+// Forgot password — sends reset link (always returns 200 to prevent email enumeration)
+router.post("/forgot-password", authLimiter, async (req: Request, res: Response) => {
+  const parsed = z.object({ email: z.string().email() }).safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, message: "Please provide a valid email address." });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+
+  if (user) {
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetToken: token, resetTokenExpiry: expiry },
+    });
+
+    const webUrl = process.env.WEB_URL || "http://localhost:3000";
+    const resetUrl = `${webUrl}/reset-password?token=${token}`;
+
+    await sendPasswordReset({ to: user.email, firstName: user.firstName, resetUrl });
+  }
+
+  // Always respond with success to prevent email enumeration
+  return res.json({
+    success: true,
+    message: "If an account exists for that email, a reset link has been sent.",
+  });
+});
+
+// Reset password — validates token and sets new password
+router.post("/reset-password", async (req: Request, res: Response) => {
+  const parsed = z.object({
+    token: z.string().min(1),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+  }).safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.flatten().fieldErrors });
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      resetToken: parsed.data.token,
+      resetTokenExpiry: { gt: new Date() },
+    },
+  });
+
+  if (!user) {
+    return res.status(400).json({
+      success: false,
+      message: "This reset link is invalid or has expired. Please request a new one.",
+    });
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash, resetToken: null, resetTokenExpiry: null },
+  });
+
+  audit({ entityType: "User", entityId: user.id, action: "PASSWORD_RESET", actorId: user.id, actorEmail: user.email, req });
+
+  return res.json({ success: true, message: "Password reset successfully. You can now sign in." });
 });
 
 export default router;
