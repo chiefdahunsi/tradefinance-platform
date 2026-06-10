@@ -53,6 +53,7 @@ interface FullApplication {
     fileName: string;
     fileUrl: string;
     status: string;
+    rejectionReason?: string;
     uploadedAt: string;
   }[];
   kycChecks: {
@@ -119,6 +120,29 @@ export default function AnalystApplicationPage() {
   const [runningBvn, setRunningBvn] = useState<Record<string, boolean>>({});
   const [runningCac, setRunningCac] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "documents" | "kyc" | "decision">("overview");
+  const [reviewingDoc, setReviewingDoc] = useState<string | null>(null);
+  const [rejectionInputs, setRejectionInputs] = useState<Record<string, string>>({});
+  const [showRejectionBox, setShowRejectionBox] = useState<Record<string, boolean>>({});
+
+  const handleDocReview = async (docId: string, status: "APPROVED" | "REJECTED") => {
+    if (status === "REJECTED" && !rejectionInputs[docId]?.trim()) {
+      setShowRejectionBox((p) => ({ ...p, [docId]: true }));
+      return;
+    }
+    setReviewingDoc(docId);
+    try {
+      await api.patch(`/api/documents/${docId}/review`, {
+        status,
+        rejectionReason: rejectionInputs[docId] || undefined,
+      });
+      setShowRejectionBox((p) => ({ ...p, [docId]: false }));
+      await fetchApp();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Review failed");
+    } finally {
+      setReviewingDoc(null);
+    }
+  };
 
   const [decision, setDecision] = useState({
     decision: "",
@@ -502,19 +526,93 @@ export default function AnalystApplicationPage() {
             {app.documents.length === 0 ? (
               <p className="text-sm text-slate-400">No documents uploaded yet.</p>
             ) : (
-              <div className="space-y-2">
-                {app.documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
-                    <div className="flex items-center gap-3">
-                      <span className="text-slate-400">📄</span>
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">{doc.type.replace(/_/g, " ")}</p>
-                        <p className="text-xs text-slate-400">{doc.fileName} · {new Date(doc.uploadedAt).toLocaleDateString("en-NG")}</p>
+              <div className="space-y-3">
+                {app.documents.map((doc) => {
+                  const isReviewing = reviewingDoc === doc.id;
+                  const showReject = showRejectionBox[doc.id];
+                  const statusStyles: Record<string, string> = {
+                    APPROVED: "bg-green-50 border-green-200",
+                    REJECTED: "bg-red-50 border-red-200",
+                    PENDING: "bg-white border-slate-200",
+                  };
+                  const badgeStyles: Record<string, string> = {
+                    APPROVED: "bg-green-100 text-green-700",
+                    REJECTED: "bg-red-100 text-red-700",
+                    PENDING: "bg-slate-100 text-slate-600",
+                  };
+                  return (
+                    <div key={doc.id} className={`rounded-xl border p-4 ${statusStyles[doc.status] ?? "bg-white border-slate-200"}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <span className="text-slate-400 mt-0.5">📄</span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-slate-800">{doc.type.replace(/_/g, " ")}</p>
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badgeStyles[doc.status] ?? ""}`}>{doc.status}</span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-0.5">{doc.fileName} · {new Date(doc.uploadedAt).toLocaleDateString("en-NG")}</p>
+                            {doc.status === "REJECTED" && (doc as any).rejectionReason && (
+                              <p className="text-xs text-red-600 mt-1">Reason: {(doc as any).rejectionReason}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <DocumentLink documentId={doc.id} fileName={doc.fileName} />
+                          {doc.status !== "APPROVED" && (
+                            <button
+                              onClick={() => handleDocReview(doc.id, "APPROVED")}
+                              disabled={isReviewing}
+                              className="text-xs bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg font-medium"
+                            >
+                              {isReviewing ? "..." : "Accept"}
+                            </button>
+                          )}
+                          {doc.status !== "REJECTED" && (
+                            <button
+                              onClick={() => {
+                                if (!showReject) {
+                                  setShowRejectionBox((p) => ({ ...p, [doc.id]: true }));
+                                } else {
+                                  handleDocReview(doc.id, "REJECTED");
+                                }
+                              }}
+                              disabled={isReviewing}
+                              className="text-xs bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg font-medium"
+                            >
+                              {isReviewing ? "..." : "Reject"}
+                            </button>
+                          )}
+                        </div>
                       </div>
+                      {showReject && (
+                        <div className="mt-3 space-y-2">
+                          <textarea
+                            rows={2}
+                            placeholder="State the reason for rejection (sent to the customer)…"
+                            value={rejectionInputs[doc.id] || ""}
+                            onChange={(e) => setRejectionInputs((p) => ({ ...p, [doc.id]: e.target.value }))}
+                            className="w-full border border-red-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleDocReview(doc.id, "REJECTED")}
+                              disabled={isReviewing || !rejectionInputs[doc.id]?.trim()}
+                              className="text-xs bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg font-medium"
+                            >
+                              {isReviewing ? "Sending..." : "Confirm Rejection & Notify Customer"}
+                            </button>
+                            <button
+                              onClick={() => setShowRejectionBox((p) => ({ ...p, [doc.id]: false }))}
+                              className="text-xs border border-slate-200 hover:border-slate-400 text-slate-600 px-3 py-1.5 rounded-lg"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <DocumentLink documentId={doc.id} fileName={doc.fileName} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Section>

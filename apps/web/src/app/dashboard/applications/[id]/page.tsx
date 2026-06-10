@@ -47,7 +47,7 @@ interface Application {
   collateralType?: string;
   collateralValue?: number;
   submittedAt?: string;
-  documents: { id: string; type: string; fileName: string; status: string; uploadedAt: string }[];
+  documents: { id: string; type: string; fileName: string; status: string; rejectionReason?: string; uploadedAt: string }[];
   kycChecks: { id: string; checkType: string; status: string; notes?: string; checkedAt: string }[];
   business: {
     cacNumber: string;
@@ -163,6 +163,8 @@ export default function ApplicationDetailPage() {
   const requiredDocs = DOCUMENT_TYPES.filter((d) => d.required);
   const allRequiredUploaded = requiredDocs.every((d) => uploadedTypes.includes(d.value));
   const isDraft = app.status === "DRAFT";
+  const terminalStatuses = ["APPROVED", "DISBURSED"];
+  const canUpload = !terminalStatuses.includes(app.status);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -324,18 +326,26 @@ export default function ApplicationDetailPage() {
             {DOCUMENT_TYPES.map((doc) => {
               const uploaded = app.documents.find((d) => d.type === doc.value);
               const isUploading = uploading === doc.value;
+              const isRejected = (uploaded as any)?.status === "REJECTED";
+              const isApproved = (uploaded as any)?.status === "APPROVED";
+              const rowBg = isRejected ? "bg-red-50 border border-red-200 rounded-lg px-3" : isApproved ? "bg-green-50 border border-green-100 rounded-lg px-3" : "";
               return (
-                <div key={doc.value} className="flex items-center justify-between py-2.5 border-b border-slate-50 last:border-0">
-                  <div className="flex items-center gap-2.5">
-                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs ${uploaded ? "bg-green-500 text-white" : "bg-slate-200"}`}>
-                      {uploaded ? "✓" : ""}
+                <div key={doc.value} className={`flex items-start justify-between py-2.5 gap-3 ${rowBg} ${!rowBg ? "border-b border-slate-50 last:border-0" : ""}`}>
+                  <div className="flex items-start gap-2.5">
+                    <span className={`mt-0.5 w-4 h-4 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${isApproved ? "bg-green-500 text-white" : isRejected ? "bg-red-400 text-white" : uploaded ? "bg-green-500 text-white" : "bg-slate-200"}`}>
+                      {isRejected ? "✕" : uploaded ? "✓" : ""}
                     </span>
                     <div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-wrap">
                         <span className="text-sm text-slate-700">{doc.label}</span>
                         {doc.required && <span className="text-red-400 text-xs">*</span>}
+                        {isApproved && <span className="text-xs font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">Approved</span>}
+                        {isRejected && <span className="text-xs font-semibold text-red-700 bg-red-100 px-1.5 py-0.5 rounded-full">Rejected — re-upload required</span>}
                       </div>
-                      {doc.hint && <p className="text-xs text-slate-400 mt-0.5 max-w-sm">{doc.hint}</p>}
+                      {doc.hint && !isRejected && <p className="text-xs text-slate-400 mt-0.5 max-w-sm">{doc.hint}</p>}
+                      {isRejected && (uploaded as any)?.rejectionReason && (
+                        <p className="text-xs text-red-600 mt-0.5 font-medium">Reason: {(uploaded as any).rejectionReason}</p>
+                      )}
                       {uploaded && (
                         <div className="flex items-center gap-2 mt-0.5">
                           <p className="text-xs text-slate-400">{uploaded.fileName}</p>
@@ -344,13 +354,13 @@ export default function ApplicationDetailPage() {
                       )}
                     </div>
                   </div>
-                  {isDraft && (
+                  {canUpload && (
                     <button
                       onClick={() => handleUploadClick(doc.value)}
                       disabled={isUploading}
-                      className="flex items-center gap-1.5 text-xs font-medium text-green-600 hover:text-green-800 disabled:opacity-50"
+                      className={`flex items-center gap-1.5 text-xs font-medium flex-shrink-0 disabled:opacity-50 ${isRejected ? "text-red-600 hover:text-red-800" : "text-green-600 hover:text-green-800"}`}
                     >
-                      {isUploading ? <><Spinner className="text-green-600" /> Uploading...</> : uploaded ? "Replace" : "Upload"}
+                      {isUploading ? <><Spinner className="text-green-600" /> Uploading...</> : isRejected ? "↑ Re-upload" : uploaded ? "Replace" : "Upload"}
                     </button>
                   )}
                 </div>

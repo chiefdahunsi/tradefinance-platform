@@ -287,3 +287,38 @@ export async function sendDecision(opts: {
     baseTemplate(titleMap[decision], body)
   );
 }
+
+export async function sendDocumentRejected(opts: {
+  to: string;
+  firstName: string;
+  businessName: string;
+  referenceNumber: string;
+  documentType: string;
+  rejectionReason: string;
+  dashboardUrl: string;
+}) {
+  const docLabel = opts.documentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const body = `
+    <p style="margin:0 0 16px;font-size:15px;color:#0f172a;">Dear <strong>${opts.firstName}</strong>,</p>
+    <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6;">
+      We have reviewed the documents submitted for your application <strong>${opts.referenceNumber}</strong> (${opts.businessName}).
+      One of your documents requires attention:
+    </p>
+    <div style="margin-bottom:20px;padding:16px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;">
+      <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#dc2626;">Document Rejected: ${docLabel}</p>
+      <p style="margin:0;font-size:13px;color:#7f1d1d;">${opts.rejectionReason}</p>
+    </div>
+    <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
+      Please log in to your dashboard and re-upload a corrected version of this document to continue your application.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr><td align="center">
+        <a href="${opts.dashboardUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;text-decoration:none;">
+          Re-upload Document →
+        </a>
+      </td></tr>
+    </table>
+    <p style="margin:0;font-size:12px;color:#94a3b8;">If you have questions, reply to this email or contact your relationship manager.</p>
+  `;
+  await send(opts.to, `Action Required: Document Rejected — ${opts.referenceNumber}`, baseTemplate("Document Rejected", body));
+}

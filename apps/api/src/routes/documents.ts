@@ -6,7 +6,8 @@ import { v4 as uuid } from "uuid";
 import path from "path";
 import fs from "fs";
 import { prisma } from "@tradefinance/db";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireAuth, AuthRequest, requireRole } from "../middleware/auth";
+import { sendDocumentRejected } from "../services/email";
 
 const router = Router();
 
@@ -90,6 +91,18 @@ router.post(
 
       if (!application) {
         return res.status(404).json({ success: false, message: "Application not found." });
+      }
+
+      // SMEs can re-upload on DRAFT or when a document was rejected (any non-terminal status)
+      if (req.user!.role === "SME_OWNER") {
+        const business = await prisma.business.findUnique({ where: { userId: req.user!.userId } });
+        if (application.businessId !== business?.id) {
+          return res.status(403).json({ success: false, message: "Access denied." });
+        }
+        const terminalStatuses = ["APPROVED", "DISBURSED"];
+        if (terminalStatuses.includes(application.status)) {
+          return res.status(400).json({ success: false, message: "Cannot upload documents to a finalised application." });
+        }
       }
 
       const fileExt = path.extname(req.file.originalname);
@@ -203,5 +216,53 @@ router.get("/:documentId/url", async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ success: false, message: "Could not generate download link." });
   }
 });
+
+// Analyst: approve or reject a single document
+router.patch(
+  "/:documentId/review",
+  requireRole("ANALYST", "ADMIN"),
+  async (req: AuthRequest, res: Response) => {
+    const { status, rejectionReason } = req.body as { status: "APPROVED" | "REJECTED"; rejectionReason?: string };
+
+    if (!["APPROVED", "REJECTED"].includes(status)) {
+      return res.status(400).json({ success: false, message: "status must be APPROVED or REJECTED" });
+    }
+    if (status === "REJECTED" && !rejectionReason?.trim()) {
+      return res.status(400).json({ success: false, message: "rejectionReason is required when rejecting a document" });
+    }
+
+    const doc = await prisma.document.findUnique({
+      where: { id: req.params.documentId },
+      include: { application: { include: { business: { include: { user: true } } } } },
+    });
+
+    if (!doc) return res.status(404).json({ success: false, message: "Document not found" });
+
+    const updated = await prisma.document.update({
+      where: { id: doc.id },
+      data: {
+        status: status as any,
+        rejectionReason: status === "REJECTED" ? rejectionReason : null,
+        reviewedAt: new Date(),
+      },
+    });
+
+    if (status === "REJECTED") {
+      const { user } = doc.application.business;
+      const webUrl = process.env.WEB_URL || "https://padimarket.com.ng";
+      sendDocumentRejected({
+        to: user.email,
+        firstName: user.firstName,
+        businessName: doc.application.business.registeredName,
+        referenceNumber: doc.application.referenceNumber,
+        documentType: doc.type,
+        rejectionReason: rejectionReason!,
+        dashboardUrl: `${webUrl}/dashboard/applications/${doc.applicationId}`,
+      }).catch((err) => console.error("Doc rejection email error:", err));
+    }
+
+    return res.json({ success: true, data: updated });
+  }
+);
 
 export default router;

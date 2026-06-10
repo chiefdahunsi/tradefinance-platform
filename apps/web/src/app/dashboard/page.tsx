@@ -65,6 +65,14 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           {hasBusiness && (
             <Link
+              href="/dashboard/profile"
+              className="border border-slate-200 hover:border-slate-400 text-slate-600 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              My Profile
+            </Link>
+          )}
+          {hasBusiness && (
+            <Link
               href="/dashboard/apply"
               className="bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >

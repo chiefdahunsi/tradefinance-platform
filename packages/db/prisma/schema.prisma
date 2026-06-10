@@ -46,6 +46,8 @@ enum DocumentType {
   WAREHOUSE_RECEIPT
   DIRECTORS_ID
   UTILITY_BILL
+  PROOF_OF_COLLATERAL
+  PASSPORT_PHOTOGRAPH
   OTHER
 }
 
@@ -191,8 +193,9 @@ model Document {
   fileUrl       String
   fileSize      Int
   mimeType      String
-  extractedData Json?
-  notes         String?
+  extractedData   Json?
+  notes           String?
+  rejectionReason String?
 
   uploadedAt DateTime  @default(now())
   reviewedAt DateTime?
