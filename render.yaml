@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: tradefinance-api
+    runtime: node
+    buildCommand: npm install && npm run build:api
+    startCommand: node apps/api/dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: WEB_URL
+        sync: false
+      - key: AWS_REGION
+        value: us-east-1
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET
+        value: padimarket-tradefinance-docs
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: DOJAH_APP_ID
+        sync: false
+      - key: DOJAH_SECRET_KEY
+        sync: false
+      - key: FIRSTCENTRAL_BASE_URL
+        sync: false
+      - key: FIRSTCENTRAL_API_KEY
+        sync: false
+      - key: FIRSTCENTRAL_CLIENT_ID
+        sync: false

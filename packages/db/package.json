@@ -1,13 +1,14 @@
 {
   "name": "@tradefinance/db",
   "version": "1.0.0",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
   "scripts": {
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:push": "prisma db push",
-    "db:seed": "ts-node src/seed.ts"
+    "db:seed": "ts-node src/seed.ts",
+    "build": "prisma generate && tsc"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3"
@@ -16,5 +17,6 @@
     "prisma": "^6.19.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
-  }
+  },
+  "types": "./dist/index.d.ts"
 }

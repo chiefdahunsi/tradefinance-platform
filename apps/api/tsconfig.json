@@ -9,13 +9,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "ignoreDeprecations": "6.0",
-    "paths": {
-      "@tradefinance/db": ["../../packages/db/src/index.ts"],
-      "@tradefinance/types": ["../../packages/types/src/index.ts"]
-    },
-    "baseUrl": "."
+    "resolveJsonModule": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

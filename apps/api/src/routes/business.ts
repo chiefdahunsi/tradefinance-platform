@@ -58,13 +58,13 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       dateIncorporated: data.dateIncorporated
         ? new Date(data.dateIncorporated)
         : undefined,
-    },
+    } as any,
     update: {
       ...data,
       dateIncorporated: data.dateIncorporated
         ? new Date(data.dateIncorporated)
         : undefined,
-    },
+    } as any,
   });
 
   return res.json({ success: true, data: business });
