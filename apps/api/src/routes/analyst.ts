@@ -1,6 +1,6 @@
 import { Router, Response } from "express";
 import { z } from "zod";
-import { prisma } from "@tradefinance/db";
+import { prisma, Prisma } from "@tradefinance/db";
 import { requireAuth, AuthRequest, requireRole } from "../middleware/auth";
 import { generateCreditProfile } from "../services/scoring";
 import { sendDecision } from "../services/email";
@@ -72,10 +72,13 @@ router.post(
 
     const profile = await generateCreditProfile(application as any);
 
+    // Prisma requires Prisma.DbNull for nullable JSON fields, not plain null
+    const bureauRawData = profile.bureauRawData ?? Prisma.DbNull;
+
     const saved = await prisma.creditProfile.upsert({
       where: { applicationId: application.id },
-      create: { ...profile, applicationId: application.id },
-      update: profile,
+      create: { ...profile, bureauRawData, applicationId: application.id } as any,
+      update: { ...profile, bureauRawData } as any,
     });
 
     audit({ entityType: "LoanApplication", entityId: req.params.applicationId, action: AuditAction.CREDIT_PROFILE_GENERATED, actorId: req.user!.userId, req });

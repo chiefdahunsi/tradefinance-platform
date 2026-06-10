@@ -71,6 +71,9 @@ interface FullApplication {
     financialScore: number;
     tradeHistoryScore: number;
     collateralScore: number;
+    bureauScore: number | null;
+    bureauProvider: string | null;
+    bureauReference: string | null;
     summary: string;
     strengths: string[];
     risks: string[];
@@ -270,7 +273,7 @@ export default function AnalystApplicationPage() {
               }`}>{app.creditProfile.recommendation}</div>
             </div>
             <div className="h-12 w-px bg-slate-200" />
-            <div className="flex-1 grid grid-cols-4 gap-3 text-center">
+            <div className="flex-1 grid grid-cols-5 gap-3 text-center">
               {[
                 { label: "KYC", score: app.creditProfile.kycScore },
                 { label: "Financial", score: app.creditProfile.financialScore },
@@ -282,6 +285,22 @@ export default function AnalystApplicationPage() {
                   <div className="text-xs text-slate-400">{label}</div>
                 </div>
               ))}
+              <div>
+                {app.creditProfile.bureauScore !== null && app.creditProfile.bureauScore !== undefined ? (
+                  <>
+                    <div className={`text-lg font-bold ${SCORE_COLOR(app.creditProfile.bureauScore)}`}>
+                      {app.creditProfile.bureauScore}
+                    </div>
+                    <div className="text-xs text-slate-400">Bureau</div>
+                    <div className="text-xs text-slate-300">{app.creditProfile.bureauProvider}</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-lg font-bold text-slate-300">—</div>
+                    <div className="text-xs text-slate-300">Bureau</div>
+                  </>
+                )}
+              </div>
             </div>
             {hasDecision && (
               <>
@@ -354,6 +373,21 @@ export default function AnalystApplicationPage() {
                         <li key={i} className="text-sm text-slate-600">• {c}</li>
                       ))}
                     </ul>
+                  </div>
+                )}
+                {app.creditProfile.bureauScore !== null && app.creditProfile.bureauScore !== undefined && (
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    <p className="text-xs font-semibold text-slate-600 mb-2">
+                      🏛 Credit Bureau — {app.creditProfile.bureauProvider}
+                    </p>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-slate-600">
+                        Normalised Score: <strong className={SCORE_COLOR(app.creditProfile.bureauScore)}>{app.creditProfile.bureauScore}/100</strong>
+                      </span>
+                      {app.creditProfile.bureauReference && (
+                        <span className="text-slate-400 font-mono text-xs">Ref: {app.creditProfile.bureauReference}</span>
+                      )}
+                    </div>
                   </div>
                 )}
               </Section>
