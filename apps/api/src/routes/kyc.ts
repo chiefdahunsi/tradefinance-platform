@@ -77,7 +77,7 @@ router.post("/cac", async (req: AuthRequest, res: Response) => {
     return res.status(404).json({ success: false, message: "Application not found" });
   }
 
-  const result = await verifyCAC(cacNumber);
+  const result = await verifyCAC(cacNumber, application.business.registeredName);
   const kycStatus = result.status === "PASSED" ? "PASSED" : result.status === "PENDING" ? "PENDING" : "FAILED";
 
   await prisma.kYCCheck.create({
@@ -148,7 +148,7 @@ router.post("/run/:applicationId", async (req: AuthRequest, res: Response) => {
   }
 
   // CAC check
-  const cacResult = await verifyCAC(application.business.cacNumber);
+  const cacResult = await verifyCAC(application.business.cacNumber, application.business.registeredName);
   const cacStatus = cacResult.status === "PASSED" ? "PASSED" : cacResult.status === "PENDING" ? "PENDING" : "FAILED";
 
   await prisma.kYCCheck.create({

@@ -232,7 +232,7 @@ async function runKYCChecks(applicationId: string) {
   }
 
   // CAC
-  const cacResult = await verifyCAC(application.business.cacNumber);
+  const cacResult = await verifyCAC(application.business.cacNumber, application.business.registeredName);
   const cacStatus = cacResult.status === "PASSED" ? "PASSED" : cacResult.status === "PENDING" ? "PENDING" : "FAILED";
   checks.push({ status: cacStatus });
 

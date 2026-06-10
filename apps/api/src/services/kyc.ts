@@ -64,7 +64,8 @@ export async function verifyBVN(
 }
 
 export async function verifyCAC(
-  rcNumber: string
+  rcNumber: string,
+  companyName: string
 ): Promise<KYCVerificationResult> {
   if (!DOJAH_CONFIGURED) {
     return {
@@ -76,7 +77,7 @@ export async function verifyCAC(
 
   try {
     const { data } = await dojah.get(`/api/v1/kyc/cac`, {
-      params: { rc_number: rcNumber },
+      params: { rc_number: rcNumber, company_name: companyName },
     });
 
     const entity = data?.entity;
