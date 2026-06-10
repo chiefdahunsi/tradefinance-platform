@@ -75,7 +75,7 @@ export async function verifyCAC(
     };
   }
 
-  // Try advance endpoint first (rc_number only), fall back to basic with company_name
+  // Try advance endpoint first (rc_number only), always fall back to basic with company_name
   const endpoints = [
     { url: `/api/v1/kyc/cac/advance`, params: { rc_number: rcNumber } },
     { url: `/api/v1/kyc/cac`,         params: { rc_number: rcNumber, company_name: companyName } },
@@ -86,6 +86,7 @@ export async function verifyCAC(
   for (const endpoint of endpoints) {
     try {
       const { data } = await dojah.get(endpoint.url, { params: endpoint.params });
+      console.log(`CAC [${endpoint.url}] response:`, JSON.stringify(data).slice(0, 300));
 
       const entity = data?.entity;
       if (!entity) {
@@ -100,26 +101,19 @@ export async function verifyCAC(
       };
     } catch (err: any) {
       const errData = err?.response?.data;
-      // If it's a validation error (missing field), try next endpoint
-      const isValidationError =
-        err?.response?.status === 400 ||
-        err?.response?.status === 422 ||
-        JSON.stringify(errData || "").toLowerCase().includes("required");
+      console.error(`CAC [${endpoint.url}] failed (${err?.response?.status}):`, JSON.stringify(errData || err.message).slice(0, 300));
 
-      console.error(`CAC [${endpoint.url}] error:`, errData || err.message);
+      // Extract the most useful error message
+      lastError = errData?.error ||
+        errData?.message ||
+        Object.entries(errData || {}).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ") ||
+        err.message ||
+        "CAC verification failed";
 
-      if (isValidationError) {
-        lastError = Object.entries(errData || {})
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
-          .join(" | ") || errData?.error || errData?.message || "Validation error";
-        continue; // try next endpoint
-      }
-
-      // Non-validation error — return immediately
-      lastError = errData?.error || errData?.message || err.message || "CAC verification service error";
-      break;
+      // Always continue to next endpoint — don't break early
+      continue;
     }
   }
 
-  return { status: "FAILED", reference: rcNumber, message: lastError || "CAC verification failed" };
+  return { status: "FAILED", reference: rcNumber, message: lastError };
 }
