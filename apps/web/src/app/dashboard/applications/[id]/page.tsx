@@ -18,6 +18,7 @@ const DOCUMENT_TYPES = [
   { value: "LETTER_OF_CREDIT", label: "Letter of Credit / SBLC", required: false, hint: "If applicable — confirmed LC or Standby LC from buyer's bank" },
   { value: "WAREHOUSE_RECEIPT", label: "Warehouse Receipt", required: false, hint: "If using warehouse stock as collateral — receipt from a licensed warehouse operator" },
   { value: "DIRECTORS_ID", label: "Directors' ID (Passport/NIN Slip)", required: true, hint: "Valid government-issued ID for each director listed in the application" },
+  { value: "PASSPORT_PHOTOGRAPH", label: "Passport Photograph", required: true, hint: "Recent passport-sized photograph of each director — white background, clear face, taken within the last 6 months" },
   { value: "UTILITY_BILL", label: "Utility Bill (Address Proof)", required: true, hint: "Recent utility bill (electricity, water, or waste) not older than 3 months, matching your registered business address" },
   { value: "PROOF_OF_COLLATERAL", label: "Proof of Collateral", required: false, hint: "Supporting documents for the collateral offered — e.g. land title / C of O for real estate; warehouse receipt for stock; domiciliation letter for sales proceeds; equipment valuation report; or copy of LC/SBLC" },
 ];
