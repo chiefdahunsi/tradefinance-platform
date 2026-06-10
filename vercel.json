@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://tradefinance-platform.up.railway.app/api/:path*"
+      "destination": "https://tradefinance-platform-production-fe42.up.railway.app/api/:path*"
     }
   ]
 }
