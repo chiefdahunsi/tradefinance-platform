@@ -66,22 +66,37 @@ export default function OnboardingPage() {
       { firstName: "", lastName: "", dateOfBirth: "", bvn: "", nin: "", phone: "", email: "", percentOwned: "", isSignatory: false },
     ]);
 
+  const buildPayload = () => ({
+    ...business,
+    yearsInOperation: business.yearsInOperation ? parseInt(business.yearsInOperation) : undefined,
+    annualTurnover: business.annualTurnover ? parseFloat(business.annualTurnover) : undefined,
+    exportMarkets: business.exportMarkets ? business.exportMarkets.split(",").map((s) => s.trim()) : [],
+  });
+
   const saveBusinessProfile = async () => {
     setLoading(true);
     setError("");
     setFieldErrors({});
     try {
-      const payload = {
-        ...business,
-        yearsInOperation: business.yearsInOperation ? parseInt(business.yearsInOperation) : undefined,
-        annualTurnover: business.annualTurnover ? parseFloat(business.annualTurnover) : undefined,
-        exportMarkets: business.exportMarkets ? business.exportMarkets.split(",").map((s) => s.trim()) : [],
-      };
-      const { data } = await api.post("/api/business", payload);
+      const { data } = await api.post("/api/business", buildPayload());
       setBusinessId(data.data.id);
       setStep(1);
     } catch (err: any) {
       setFieldErrors(parseFieldErrors(err));
+      setError(parseApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveTradeProfile = async () => {
+    if (business.commodities.length === 0) return;
+    setLoading(true);
+    setError("");
+    try {
+      await api.post("/api/business", buildPayload());
+      setStep(2);
+    } catch (err: any) {
       setError(parseApiError(err));
     } finally {
       setLoading(false);
@@ -263,11 +278,11 @@ export default function OnboardingPage() {
             <div className="flex gap-3">
               <button onClick={() => setStep(0)} className={btnOutline}>← Back</button>
               <button
-                onClick={() => setStep(2)}
-                disabled={business.commodities.length === 0}
+                onClick={saveTradeProfile}
+                disabled={loading || business.commodities.length === 0}
                 className={btn}
               >
-                Continue →
+                {loading && <Spinner />}{loading ? "Saving..." : "Continue →"}
               </button>
             </div>
           </div>
