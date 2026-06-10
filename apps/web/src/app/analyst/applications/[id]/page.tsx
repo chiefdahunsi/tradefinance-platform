@@ -62,6 +62,7 @@ interface FullApplication {
     status: string;
     notes?: string;
     checkedAt: string;
+    rawResponse?: Record<string, any> | null;
   }[];
   creditProfile?: {
     totalScore: number;
@@ -493,26 +494,53 @@ export default function AnalystApplicationPage() {
 
         {/* KYC Tab */}
         {activeTab === "kyc" && (
-          <Section title="KYC Verification Checks">
+          <div className="space-y-4">
             {app.kycChecks.length === 0 ? (
-              <p className="text-sm text-slate-400">No KYC checks run yet.</p>
+              <Section title="KYC Verification Checks">
+                <p className="text-sm text-slate-400">No KYC checks run yet.</p>
+              </Section>
             ) : (
-              <div className="space-y-2">
-                {app.kycChecks.map((check) => (
-                  <div key={check.id} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
-                    <div>
-                      <p className="text-sm font-medium text-slate-800">{check.checkType} · <span className="font-normal text-slate-500">{check.provider}</span></p>
-                      {check.notes && <p className="text-xs text-slate-500 mt-0.5">{check.notes}</p>}
-                      <p className="text-xs text-slate-400 mt-0.5">{new Date(check.checkedAt).toLocaleDateString("en-NG")}</p>
+              app.kycChecks.map((check) => (
+                <div key={check.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{check.checkType === "CAC" ? "🏢" : "👤"}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {check.checkType === "CAC" ? "CAC Company Verification" : `BVN Verification`}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          via {check.provider} · {new Date(check.checkedAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
                     </div>
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${KYC_STYLES[check.status] ?? "bg-slate-100 text-slate-600"}`}>
                       {check.status}
                     </span>
                   </div>
-                ))}
-              </div>
+
+                  {/* Notes */}
+                  {check.notes && (
+                    <div className="px-5 py-3 bg-slate-50 border-b border-slate-100">
+                      <p className="text-xs text-slate-500">{check.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Dojah response data */}
+                  {check.rawResponse && (
+                    <div className="px-5 py-4">
+                      {check.checkType === "CAC" ? (
+                        <CACResponseView data={check.rawResponse} />
+                      ) : (
+                        <BVNResponseView data={check.rawResponse} />
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
             )}
-          </Section>
+          </div>
         )}
 
         {/* Decision Tab */}
@@ -638,3 +666,103 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const inp = "w-full border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent bg-white disabled:bg-slate-50 disabled:text-slate-500";
+
+// ─── Dojah CAC response display ───────────────────────────────────────────────
+function CACResponseView({ data }: { data: Record<string, any> }) {
+  const entity = data?.entity ?? data;
+
+  const fields = [
+    { label: "Company Name",       value: entity?.company_name ?? entity?.companyName },
+    { label: "RC Number",          value: entity?.rc_number ?? entity?.rcNumber },
+    { label: "Company Type",       value: entity?.company_type ?? entity?.type },
+    { label: "Registration Date",  value: entity?.registration_date ?? entity?.registrationDate },
+    { label: "Status",             value: entity?.company_status ?? entity?.status },
+    { label: "Address",            value: entity?.address },
+    { label: "Email",              value: entity?.email },
+    { label: "Phone",              value: entity?.phone },
+    { label: "LGA",                value: entity?.lga },
+    { label: "State",              value: entity?.state },
+  ].filter((f) => f.value);
+
+  const directors: any[] = entity?.directors ?? entity?.affiliates ?? [];
+
+  if (fields.length === 0 && directors.length === 0) {
+    return <p className="text-xs text-slate-400 italic">No structured data available from provider.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {fields.length > 0 && (
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+          {fields.map(({ label, value }) => (
+            <div key={label}>
+              <dt className="text-xs text-slate-400 font-medium">{label}</dt>
+              <dd className="text-sm text-slate-800 font-medium mt-0.5">{String(value)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {directors.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-slate-600 mb-2">Registered Directors / Affiliates</p>
+          <div className="space-y-1.5">
+            {directors.map((d: any, i: number) => (
+              <div key={i} className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2">
+                <span className="text-slate-400">👤</span>
+                <span>{d.name ?? `${d.firstname ?? ""} ${d.lastname ?? ""}`.trim()}</span>
+                {d.status && <span className="ml-auto text-xs text-slate-400">{d.status}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Dojah BVN response display ───────────────────────────────────────────────
+function BVNResponseView({ data }: { data: Record<string, any> }) {
+  const entity = data?.entity ?? data;
+
+  const fields = [
+    { label: "Full Name",          value: entity?.full_name ?? `${entity?.first_name ?? ""} ${entity?.last_name ?? ""}`.trim() || undefined },
+    { label: "BVN",                value: entity?.bvn },
+    { label: "Date of Birth",      value: entity?.date_of_birth ?? entity?.dateOfBirth },
+    { label: "Phone",              value: entity?.phone_number ?? entity?.phone },
+    { label: "Gender",             value: entity?.gender },
+    { label: "Nationality",        value: entity?.nationality },
+    { label: "State of Origin",    value: entity?.state_of_origin ?? entity?.stateOfOrigin },
+    { label: "LGA of Origin",      value: entity?.lga_of_origin },
+    { label: "Enrolment Bank",     value: entity?.enrollment_bank ?? entity?.enrollmentBank },
+    { label: "Watch Listed",       value: entity?.watch_listed !== undefined ? (entity.watch_listed ? "Yes" : "No") : undefined },
+  ].filter((f) => f.value);
+
+  const photo: string | undefined = entity?.image ?? entity?.photo ?? entity?.base64Image;
+
+  if (fields.length === 0) {
+    return <p className="text-xs text-slate-400 italic">No structured data available from provider.</p>;
+  }
+
+  return (
+    <div className="flex gap-6">
+      {photo && (
+        <div className="flex-shrink-0">
+          <img
+            src={`data:image/jpeg;base64,${photo}`}
+            alt="BVN photo"
+            className="w-20 h-24 object-cover rounded-lg border border-slate-200"
+          />
+          <p className="text-xs text-slate-400 text-center mt-1">BVN photo</p>
+        </div>
+      )}
+      <dl className="flex-1 grid grid-cols-2 gap-x-6 gap-y-3">
+        {fields.map(({ label, value }) => (
+          <div key={label}>
+            <dt className="text-xs text-slate-400 font-medium">{label}</dt>
+            <dd className="text-sm text-slate-800 font-medium mt-0.5">{String(value)}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
