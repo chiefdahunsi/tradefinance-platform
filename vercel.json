@@ -2,11 +2,5 @@
   "buildCommand": "cd apps/web && npm run build",
   "outputDirectory": "apps/web/.next",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://tradefinance-platform-production-fe42.up.railway.app/api/:path*"
-    }
-  ]
+  "framework": "nextjs"
 }
