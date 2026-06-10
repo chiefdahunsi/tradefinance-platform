@@ -205,25 +205,49 @@ export default function OnboardingPage() {
         {step === 1 && (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">
-                Commodities traded * <span className="text-slate-400 font-normal">(select all that apply)</span>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {COMMODITIES.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => toggleCommodity(c)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                      business.commodities.includes(c)
-                        ? "bg-green-600 text-white border-green-600"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-green-400"
-                    }`}
-                  >
-                    {c.replace(/_/g, " ")}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-slate-700">
+                  Commodities traded *
+                </label>
+                {business.commodities.length > 0 ? (
+                  <span className="text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
+                    {business.commodities.length} selected
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-400">Select all that apply</span>
+                )}
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                {COMMODITIES.map((c) => {
+                  const selected = business.commodities.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => toggleCommodity(c)}
+                      className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium border-2 transition-all text-left ${
+                        selected
+                          ? "bg-green-50 text-green-800 border-green-500"
+                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                        selected ? "bg-green-500 border-green-500" : "border-slate-300"
+                      }`}>
+                        {selected && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      {c.replace(/_/g, " ")}
+                    </button>
+                  );
+                })}
+              </div>
+              {business.commodities.length === 0 && (
+                <p className="text-xs text-red-500 mt-2">Please select at least one commodity.</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Years in Operation">
