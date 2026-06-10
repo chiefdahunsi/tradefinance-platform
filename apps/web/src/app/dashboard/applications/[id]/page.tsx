@@ -8,17 +8,18 @@ import { DocumentLink } from "@/components/shared/document-link";
 import { parseApiError } from "@/lib/errors";
 
 const DOCUMENT_TYPES = [
-  { value: "CAC_CERTIFICATE", label: "CAC Certificate", required: true },
-  { value: "CAC_STATUS_REPORT", label: "CAC Status Report", required: true },
-  { value: "MEMART", label: "MEMART / Articles of Association", required: false },
-  { value: "AUDITED_FINANCIALS", label: "Audited Financial Statements", required: true },
-  { value: "BANK_STATEMENT", label: "Bank Statement (6 months)", required: true },
-  { value: "TRADE_CONTRACT", label: "Trade Contract / Purchase Order", required: true },
-  { value: "INVOICE", label: "Commercial Invoice", required: false },
-  { value: "LETTER_OF_CREDIT", label: "Letter of Credit / SBLC", required: false },
-  { value: "WAREHOUSE_RECEIPT", label: "Warehouse Receipt", required: false },
-  { value: "DIRECTORS_ID", label: "Directors' ID (Passport/NIN Slip)", required: true },
-  { value: "UTILITY_BILL", label: "Utility Bill (address proof)", required: false },
+  { value: "CAC_CERTIFICATE", label: "CAC Certificate", required: true, hint: "Certificate of Incorporation issued by CAC" },
+  { value: "CAC_STATUS_REPORT", label: "CAC Status Report", required: true, hint: "Current status report showing company is active" },
+  { value: "MEMART", label: "MEMART / Articles of Association", required: true, hint: "Memorandum and Articles of Association — required for all registered companies" },
+  { value: "AUDITED_FINANCIALS", label: "Audited Financial Statements (Last 3 Years)", required: true, hint: "Audited accounts for the last 3 financial years, signed by a registered auditor" },
+  { value: "BANK_STATEMENT", label: "Bank Statement (Last 12 Months)", required: true, hint: "Full 12-month bank statement for your primary business account, stamped by the bank" },
+  { value: "TRADE_CONTRACT", label: "Trade Contract / Purchase Order", required: true, hint: "Signed contract or PO with your buyer or supplier for the trade being financed" },
+  { value: "INVOICE", label: "Commercial Invoice", required: false, hint: "Invoice for goods being purchased or sold under this facility" },
+  { value: "LETTER_OF_CREDIT", label: "Letter of Credit / SBLC", required: false, hint: "If applicable — confirmed LC or Standby LC from buyer's bank" },
+  { value: "WAREHOUSE_RECEIPT", label: "Warehouse Receipt", required: false, hint: "If using warehouse stock as collateral — receipt from a licensed warehouse operator" },
+  { value: "DIRECTORS_ID", label: "Directors' ID (Passport/NIN Slip)", required: true, hint: "Valid government-issued ID for each director listed in the application" },
+  { value: "UTILITY_BILL", label: "Utility Bill (Address Proof)", required: true, hint: "Recent utility bill (electricity, water, or waste) not older than 3 months, matching your registered business address" },
+  { value: "PROOF_OF_COLLATERAL", label: "Proof of Collateral", required: false, hint: "Supporting documents for the collateral offered — e.g. land title / C of O for real estate; warehouse receipt for stock; domiciliation letter for sales proceeds; equipment valuation report; or copy of LC/SBLC" },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -329,10 +330,13 @@ export default function ApplicationDetailPage() {
                       {uploaded ? "✓" : ""}
                     </span>
                     <div>
-                      <span className="text-sm text-slate-700">{doc.label}</span>
-                      {doc.required && <span className="text-red-400 text-xs ml-1">*</span>}
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-slate-700">{doc.label}</span>
+                        {doc.required && <span className="text-red-400 text-xs">*</span>}
+                      </div>
+                      {doc.hint && <p className="text-xs text-slate-400 mt-0.5 max-w-sm">{doc.hint}</p>}
                       {uploaded && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mt-0.5">
                           <p className="text-xs text-slate-400">{uploaded.fileName}</p>
                           <DocumentLink documentId={uploaded.id} fileName={uploaded.fileName} className="text-xs text-blue-600 hover:underline" />
                         </div>
