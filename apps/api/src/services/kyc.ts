@@ -75,25 +75,51 @@ export async function verifyCAC(
     };
   }
 
-  try {
-    const { data } = await dojah.get(`/api/v1/kyc/cac`, {
-      params: { rc_number: rcNumber, company_name: companyName },
-    });
+  // Try advance endpoint first (rc_number only), fall back to basic with company_name
+  const endpoints = [
+    { url: `/api/v1/kyc/cac/advance`, params: { rc_number: rcNumber } },
+    { url: `/api/v1/kyc/cac`,         params: { rc_number: rcNumber, company_name: companyName } },
+  ];
 
-    const entity = data?.entity;
-    if (!entity) {
-      return { status: "FAILED", reference: rcNumber, message: "CAC number not found in registry" };
+  let lastError = "";
+
+  for (const endpoint of endpoints) {
+    try {
+      const { data } = await dojah.get(endpoint.url, { params: endpoint.params });
+
+      const entity = data?.entity;
+      if (!entity) {
+        return { status: "FAILED", reference: rcNumber, message: "CAC number not found in registry" };
+      }
+
+      return {
+        status: "PASSED",
+        reference: rcNumber,
+        details: entity,
+        message: "CAC registration verified successfully",
+      };
+    } catch (err: any) {
+      const errData = err?.response?.data;
+      // If it's a validation error (missing field), try next endpoint
+      const isValidationError =
+        err?.response?.status === 400 ||
+        err?.response?.status === 422 ||
+        JSON.stringify(errData || "").toLowerCase().includes("required");
+
+      console.error(`CAC [${endpoint.url}] error:`, errData || err.message);
+
+      if (isValidationError) {
+        lastError = Object.entries(errData || {})
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join(" | ") || errData?.error || errData?.message || "Validation error";
+        continue; // try next endpoint
+      }
+
+      // Non-validation error — return immediately
+      lastError = errData?.error || errData?.message || err.message || "CAC verification service error";
+      break;
     }
-
-    return {
-      status: "PASSED",
-      reference: rcNumber,
-      details: entity,
-      message: "CAC registration verified successfully",
-    };
-  } catch (err: any) {
-    const msg = err?.response?.data?.error || err?.response?.data?.message || "CAC verification service error";
-    console.error("CAC verification error:", err?.response?.data || err.message);
-    return { status: "FAILED", reference: rcNumber, message: msg };
   }
+
+  return { status: "FAILED", reference: rcNumber, message: lastError || "CAC verification failed" };
 }

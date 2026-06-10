@@ -116,6 +116,8 @@ export default function AnalystApplicationPage() {
   const [generatingProfile, setGeneratingProfile] = useState(false);
   const [submittingDecision, setSubmittingDecision] = useState(false);
   const [runningKyc, setRunningKyc] = useState(false);
+  const [runningBvn, setRunningBvn] = useState<Record<string, boolean>>({});
+  const [runningCac, setRunningCac] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "documents" | "kyc" | "decision">("overview");
 
   const [decision, setDecision] = useState({
@@ -150,7 +152,7 @@ export default function AnalystApplicationPage() {
 
   useEffect(() => { fetchApp(); }, [id]);
 
-  const runKyc = async () => {
+  const runAllKyc = async () => {
     setRunningKyc(true);
     setError("");
     try {
@@ -160,6 +162,32 @@ export default function AnalystApplicationPage() {
       setError(parseApiError(err));
     } finally {
       setRunningKyc(false);
+    }
+  };
+
+  const runBvn = async (directorId: string, bvn: string, dateOfBirth: string) => {
+    setRunningBvn((p) => ({ ...p, [directorId]: true }));
+    setError("");
+    try {
+      await api.post(`/api/kyc/bvn`, { directorId, bvn, dateOfBirth: dateOfBirth || "1900-01-01" });
+      await fetchApp();
+    } catch (err: any) {
+      setError(parseApiError(err));
+    } finally {
+      setRunningBvn((p) => ({ ...p, [directorId]: false }));
+    }
+  };
+
+  const runCac = async () => {
+    setRunningCac(true);
+    setError("");
+    try {
+      await api.post(`/api/kyc/cac`, { applicationId: id, cacNumber: app!.business.cacNumber });
+      await fetchApp();
+    } catch (err: any) {
+      setError(parseApiError(err));
+    } finally {
+      setRunningCac(false);
     }
   };
 
@@ -231,11 +259,11 @@ export default function AnalystApplicationPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={runKyc}
+              onClick={runAllKyc}
               disabled={runningKyc}
               className="flex items-center gap-2 border border-slate-200 hover:border-slate-400 disabled:opacity-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
             >
-              {runningKyc ? <><Spinner /> Running...</> : "↺ Re-run KYC"}
+              {runningKyc ? <><Spinner /> Running...</> : "↺ Run All KYC"}
             </button>
             {!hasDecision && (
               <button
@@ -495,10 +523,53 @@ export default function AnalystApplicationPage() {
         {/* KYC Tab */}
         {activeTab === "kyc" && (
           <div className="space-y-4">
+            {/* Individual KYC controls */}
+            <div className="bg-white rounded-xl border border-slate-200 p-5">
+              <h3 className="font-semibold text-slate-900 mb-4">Run Individual Checks</h3>
+              <div className="space-y-3">
+                {/* CAC */}
+                <div className="flex items-center justify-between py-2.5 border-b border-slate-50">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">🏢 CAC — {app.business.cacNumber}</p>
+                    <p className="text-xs text-slate-400">{app.business.registeredName}</p>
+                  </div>
+                  <button
+                    onClick={runCac}
+                    disabled={runningCac}
+                    className="flex items-center gap-1.5 text-xs bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    {runningCac ? <><Spinner /> Running...</> : "Verify CAC"}
+                  </button>
+                </div>
+                {/* BVN per director */}
+                {app.business.directors.map((dir) => (
+                  <div key={dir.id} className="flex items-center justify-between py-2.5 border-b border-slate-50 last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">👤 {dir.firstName} {dir.lastName}</p>
+                      <p className="text-xs text-slate-400">BVN: {dir.bvn} · {dir.percentOwned}% ownership</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${KYC_STYLES[dir.kycStatus] ?? "bg-slate-100 text-slate-600"}`}>
+                        {dir.kycStatus}
+                      </span>
+                      <button
+                        onClick={() => runBvn(dir.id, dir.bvn, (dir as any).dateOfBirth || "")}
+                        disabled={!!runningBvn[dir.id]}
+                        className="flex items-center gap-1.5 text-xs bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        {runningBvn[dir.id] ? <><Spinner /> Running...</> : "Verify BVN"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Results */}
             {app.kycChecks.length === 0 ? (
-              <Section title="KYC Verification Checks">
-                <p className="text-sm text-slate-400">No KYC checks run yet.</p>
-              </Section>
+              <div className="bg-slate-50 rounded-xl border border-slate-200 p-8 text-center">
+                <p className="text-sm text-slate-400">No checks run yet. Use the controls above to verify each check individually.</p>
+              </div>
             ) : (
               app.kycChecks.map((check) => (
                 <div key={check.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -515,9 +586,20 @@ export default function AnalystApplicationPage() {
                         </p>
                       </div>
                     </div>
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${KYC_STYLES[check.status] ?? "bg-slate-100 text-slate-600"}`}>
-                      {check.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {check.checkType === "CAC" && (
+                        <button
+                          onClick={runCac}
+                          disabled={runningCac}
+                          className="flex items-center gap-1.5 text-xs border border-slate-200 hover:border-slate-400 disabled:opacity-50 text-slate-600 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          {runningCac ? <><Spinner /> Running...</> : "↺ Re-verify"}
+                        </button>
+                      )}
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${KYC_STYLES[check.status] ?? "bg-slate-100 text-slate-600"}`}>
+                        {check.status}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Notes */}
