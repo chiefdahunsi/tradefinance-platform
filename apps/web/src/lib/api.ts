@@ -10,6 +10,13 @@ api.interceptors.request.use((config) => {
     const token = localStorage.getItem("tf_token");
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Remove the default Content-Type for FormData — axios sets it automatically
+  // with the correct multipart boundary. Leaving it as application/json breaks uploads.
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
+
   return config;
 });
 

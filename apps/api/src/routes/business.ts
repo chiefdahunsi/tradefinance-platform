@@ -26,6 +26,7 @@ const businessSchema = z.object({
 const directorSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  dateOfBirth: z.string().optional(),
   bvn: z.string().length(11),
   nin: z.string().optional(),
   phone: z.string(),

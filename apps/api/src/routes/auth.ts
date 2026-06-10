@@ -3,16 +3,27 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { prisma } from "@tradefinance/db";
+import { requireAuth, requireRole, AuthRequest } from "../middleware/auth";
+import { authLimiter, registerLimiter } from "../middleware/rate-limit";
+import { audit, AuditAction } from "../services/audit";
 
 const router = Router();
 
-const registerSchema = z.object({
+const smeRegisterSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   phone: z.string().optional(),
-  role: z.enum(["SME_OWNER", "ANALYST", "ADMIN"]).optional(),
+});
+
+const analystRegisterSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  phone: z.string().optional(),
+  role: z.enum(["ANALYST", "ADMIN"]).default("ANALYST"),
 });
 
 const loginSchema = z.object({
@@ -20,79 +31,129 @@ const loginSchema = z.object({
   password: z.string(),
 });
 
-router.post("/register", async (req: Request, res: Response) => {
-  const parsed = registerSchema.safeParse(req.body);
+function signToken(user: { id: string; email: string; role: string }) {
+  return jwt.sign(
+    { userId: user.id, email: user.email, role: user.role },
+    process.env.JWT_SECRET!,
+    { expiresIn: "7d" }
+  );
+}
+
+// Public — SME self-registration (always creates SME_OWNER)
+router.post("/register", registerLimiter, async (req: Request, res: Response) => {
+  const parsed = smeRegisterSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res
-      .status(400)
-      .json({ success: false, errors: parsed.error.flatten().fieldErrors });
+    return res.status(400).json({ success: false, errors: parsed.error.flatten().fieldErrors });
   }
 
-  const { email, password, firstName, lastName, phone, role } = parsed.data;
+  const { email, password, firstName, lastName, phone } = parsed.data;
 
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) {
-    return res
-      .status(409)
-      .json({ success: false, message: "Email already registered" });
+    return res.status(409).json({ success: false, message: "Email already registered" });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({
-    data: { email, passwordHash, firstName, lastName, phone, role },
+    data: { email, passwordHash, firstName, lastName, phone, role: "SME_OWNER" },
     select: { id: true, email: true, firstName: true, lastName: true, role: true },
   });
 
-  const token = jwt.sign(
-    { userId: user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET!,
-    { expiresIn: "7d" }
-  );
+  audit({ entityType: "User", entityId: user.id, action: AuditAction.REGISTER, actorId: user.id, actorEmail: user.email, req });
 
-  return res.status(201).json({ success: true, data: { user, token } });
+  return res.status(201).json({ success: true, data: { user, token: signToken(user) } });
 });
 
-router.post("/login", async (req: Request, res: Response) => {
+// Admin-only — provision analyst/admin accounts
+router.post(
+  "/analyst-register",
+  requireAuth,
+  requireRole("ADMIN"),
+  async (req: AuthRequest, res: Response) => {
+    const parsed = analystRegisterSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, errors: parsed.error.flatten().fieldErrors });
+    }
+
+    const { email, password, firstName, lastName, phone, role } = parsed.data;
+
+    const exists = await prisma.user.findUnique({ where: { email } });
+    if (exists) {
+      return res.status(409).json({ success: false, message: "Email already registered" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await prisma.user.create({
+      data: { email, passwordHash, firstName, lastName, phone, role },
+      select: { id: true, email: true, firstName: true, lastName: true, role: true },
+    });
+
+    return res.status(201).json({ success: true, data: { user } });
+  }
+);
+
+// SME login — rejects non-SME accounts
+router.post("/login", authLimiter, async (req: Request, res: Response) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res
-      .status(400)
-      .json({ success: false, errors: parsed.error.flatten().fieldErrors });
+    return res.status(400).json({ success: false, errors: parsed.error.flatten().fieldErrors });
   }
 
   const { email, password } = parsed.data;
-
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid credentials" });
+
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    audit({ entityType: "User", entityId: email, action: AuditAction.LOGIN_FAILED, actorEmail: email, req });
+    return res.status(401).json({ success: false, message: "Invalid email or password." });
   }
 
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid credentials" });
+  if (user.role !== "SME_OWNER") {
+    return res.status(403).json({
+      success: false,
+      message: "This portal is for applicants only. Please use the Analyst Portal to sign in.",
+    });
   }
 
-  const token = jwt.sign(
-    { userId: user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET!,
-    { expiresIn: "7d" }
-  );
+  audit({ entityType: "User", entityId: user.id, action: AuditAction.LOGIN_SUCCESS, actorId: user.id, actorEmail: user.email, req });
 
   return res.json({
     success: true,
     data: {
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-      },
-      token,
+      user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role },
+      token: signToken(user),
+    },
+  });
+});
+
+// Analyst login — rejects SME accounts
+router.post("/analyst-login", authLimiter, async (req: Request, res: Response) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.flatten().fieldErrors });
+  }
+
+  const { email, password } = parsed.data;
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    audit({ entityType: "User", entityId: email, action: AuditAction.LOGIN_FAILED, actorEmail: email, req });
+    return res.status(401).json({ success: false, message: "Invalid email or password." });
+  }
+
+  if (user.role !== "ANALYST" && user.role !== "ADMIN") {
+    return res.status(403).json({
+      success: false,
+      message: "This portal is for analysts only. Please use the Applicant Portal to sign in.",
+    });
+  }
+
+  audit({ entityType: "User", entityId: user.id, action: AuditAction.LOGIN_SUCCESS, actorId: user.id, actorEmail: user.email, req });
+
+  return res.json({
+    success: true,
+    data: {
+      user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role },
+      token: signToken(user),
     },
   });
 });

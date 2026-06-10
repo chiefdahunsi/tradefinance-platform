@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { AnalystShell } from "@/components/layout/analyst-shell";
+import { parseApiError } from "@/lib/errors";
 
 interface QueueItem {
   id: string;
@@ -13,45 +15,61 @@ interface QueueItem {
     amountRequested: number;
     commodityType: string;
     tenor: number;
-    status: string;
-    business: { registeredName: string; commodities: string[] };
+    submittedAt: string;
+    business: { registeredName: string; state: string };
     creditProfile?: { totalScore: number; scoreGrade: string; recommendation: string };
   };
 }
 
-const GRADE_COLORS: Record<string, string> = {
-  A: "text-green-600 bg-green-50",
-  B: "text-blue-600 bg-blue-50",
-  C: "text-yellow-600 bg-yellow-50",
-  D: "text-orange-600 bg-orange-50",
-  F: "text-red-600 bg-red-50",
+const GRADE_STYLES: Record<string, string> = {
+  A: "text-green-700 bg-green-50 border-green-200",
+  B: "text-blue-700 bg-blue-50 border-blue-200",
+  C: "text-yellow-700 bg-yellow-50 border-yellow-200",
+  D: "text-orange-700 bg-orange-50 border-orange-200",
+  F: "text-red-700 bg-red-50 border-red-200",
+};
+
+const REC_STYLES: Record<string, string> = {
+  APPROVE: "text-green-700 bg-green-50",
+  REVIEW: "text-yellow-700 bg-yellow-50",
+  DECLINE: "text-red-700 bg-red-50",
 };
 
 export default function AnalystQueuePage() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api
-      .get("/api/analyst/queue")
+    api.get("/api/analyst/queue")
       .then((r) => setQueue(r.data.data))
+      .catch((err) => setError(parseApiError(err)))
       .finally(() => setLoading(false));
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
-        <h1 className="text-xl font-bold text-slate-900">Analyst Queue</h1>
-        <p className="text-slate-500 text-sm">{queue.length} application(s) awaiting decision</p>
-      </header>
+    <AnalystShell>
+      <div className="px-8 py-7">
+        <div className="mb-7">
+          <h1 className="text-xl font-bold text-slate-900">My Queue</h1>
+          <p className="text-slate-500 text-sm mt-0.5">Applications assigned to you awaiting a decision</p>
+        </div>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">{error}</div>
+        )}
+
         {loading ? (
-          <div className="text-center py-20 text-slate-400">Loading...</div>
+          <div className="text-slate-400 text-sm">Loading...</div>
         ) : queue.length === 0 ? (
-          <div className="text-center py-20 text-slate-400">Queue is empty.</div>
+          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+            <p className="text-slate-400">Your queue is empty.</p>
+            <Link href="/analyst/applications" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
+              Browse all submitted applications →
+            </Link>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {queue.map((item) => {
               const app = item.application;
               const profile = app.creditProfile;
@@ -59,42 +77,33 @@ export default function AnalystQueuePage() {
                 <Link
                   key={item.id}
                   href={`/analyst/applications/${item.applicationId}`}
-                  className="block bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-400 transition-colors"
+                  className="block bg-white rounded-xl border border-slate-200 p-5 hover:border-slate-400 transition-colors"
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-slate-900">
-                        {app.business.registeredName}
-                      </p>
-                      <p className="text-slate-500 text-sm mt-0.5">
-                        {app.commodityType} ·{" "}
-                        {Number(app.amountRequested).toLocaleString("en-NG", {
-                          style: "currency",
-                          currency: "NGN",
-                          maximumFractionDigits: 0,
-                        })}{" "}
-                        · {app.tenor} months
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-slate-900">{app.business.registeredName}</span>
+                        <span className="text-xs text-slate-400 font-mono">{app.referenceNumber.slice(0, 8).toUpperCase()}</span>
+                      </div>
+                      <p className="text-sm text-slate-600">
+                        {app.commodityType.replace(/_/g, " ")} · ₦{Number(app.amountRequested).toLocaleString()} · {app.tenor} months · {app.business.state}
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
-                        Assigned {new Date(item.assignedAt).toLocaleDateString("en-NG")}
+                        Submitted {new Date(app.submittedAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}
                       </p>
                     </div>
                     {profile ? (
-                      <div className="text-center">
-                        <div
-                          className={`text-3xl font-bold px-4 py-2 rounded-xl ${GRADE_COLORS[profile.scoreGrade] ?? "text-slate-600 bg-slate-50"}`}
-                        >
-                          {profile.scoreGrade}
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Score: {profile.totalScore}/100
-                        </p>
-                        <p className="text-xs font-medium text-slate-600">
+                      <div className="flex items-center gap-3 ml-4">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-md ${REC_STYLES[profile.recommendation] ?? "text-slate-600 bg-slate-50"}`}>
                           {profile.recommendation}
-                        </p>
+                        </span>
+                        <div className={`text-center px-4 py-2 rounded-xl border font-bold text-lg ${GRADE_STYLES[profile.scoreGrade] ?? "text-slate-600 bg-slate-50 border-slate-200"}`}>
+                          {profile.scoreGrade}
+                          <div className="text-xs font-normal">{profile.totalScore}/100</div>
+                        </div>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">
+                      <span className="ml-4 text-xs text-slate-400 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
                         No profile yet
                       </span>
                     )}
@@ -104,7 +113,7 @@ export default function AnalystQueuePage() {
             })}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </AnalystShell>
   );
 }

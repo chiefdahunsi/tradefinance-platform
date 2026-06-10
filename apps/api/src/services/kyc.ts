@@ -1,23 +1,37 @@
 import axios from "axios";
 import { KYCVerificationResult } from "@tradefinance/types";
 
-const DOJAH_BASE = "https://api.dojah.io";
-const DOJAH_KEY = process.env.DOJAH_SECRET_KEY!;
-const DOJAH_APP_ID = process.env.DOJAH_APP_ID!;
+const DOJAH_CONFIGURED =
+  !!process.env.DOJAH_SECRET_KEY &&
+  !!process.env.DOJAH_APP_ID &&
+  process.env.DOJAH_SECRET_KEY !== "" &&
+  process.env.DOJAH_APP_ID !== "";
 
 const dojah = axios.create({
-  baseURL: DOJAH_BASE,
+  baseURL: "https://api.dojah.io",
   headers: {
-    Authorization: DOJAH_KEY,
-    AppId: DOJAH_APP_ID,
+    Authorization: process.env.DOJAH_SECRET_KEY,
+    AppId: process.env.DOJAH_APP_ID,
     "Content-Type": "application/json",
   },
 });
+
+export function isKYCConfigured() {
+  return DOJAH_CONFIGURED;
+}
 
 export async function verifyBVN(
   bvn: string,
   dateOfBirth: string
 ): Promise<KYCVerificationResult> {
+  if (!DOJAH_CONFIGURED) {
+    return {
+      status: "PENDING",
+      reference: bvn,
+      message: "KYC provider not configured. Add DOJAH_SECRET_KEY and DOJAH_APP_ID to .env to enable live verification.",
+    };
+  }
+
   try {
     const { data } = await dojah.get(`/api/v1/kyc/bvn/full`, {
       params: { bvn },
@@ -25,31 +39,41 @@ export async function verifyBVN(
 
     const info = data?.entity;
     if (!info) {
-      return { status: "FAILED", message: "BVN not found" };
+      return { status: "FAILED", reference: bvn, message: "BVN not found in registry" };
     }
 
-    // Basic DOB cross-check
-    const dobMatches =
-      info.date_of_birth?.includes(dateOfBirth.split("-")[0]) ?? false;
+    // Cross-check year of birth from the provided date
+    const providedYear = dateOfBirth?.split("-")[0];
+    const dobMatches = providedYear
+      ? info.date_of_birth?.includes(providedYear)
+      : true;
 
     return {
       status: dobMatches ? "PASSED" : "FAILED",
       reference: bvn,
       details: info,
-      message: dobMatches ? "BVN verified" : "DOB mismatch",
+      message: dobMatches
+        ? "BVN verified successfully"
+        : "Date of birth does not match BVN records",
     };
   } catch (err: any) {
+    const msg = err?.response?.data?.error || err?.response?.data?.message || "BVN verification service error";
     console.error("BVN verification error:", err?.response?.data || err.message);
-    return {
-      status: "FAILED",
-      message: err?.response?.data?.error || "Verification service error",
-    };
+    return { status: "FAILED", reference: bvn, message: msg };
   }
 }
 
 export async function verifyCAC(
   rcNumber: string
 ): Promise<KYCVerificationResult> {
+  if (!DOJAH_CONFIGURED) {
+    return {
+      status: "PENDING",
+      reference: rcNumber,
+      message: "KYC provider not configured. Add DOJAH_SECRET_KEY and DOJAH_APP_ID to .env to enable live verification.",
+    };
+  }
+
   try {
     const { data } = await dojah.get(`/api/v1/kyc/cac`, {
       params: { rc_number: rcNumber },
@@ -57,20 +81,18 @@ export async function verifyCAC(
 
     const entity = data?.entity;
     if (!entity) {
-      return { status: "FAILED", message: "CAC number not found" };
+      return { status: "FAILED", reference: rcNumber, message: "CAC number not found in registry" };
     }
 
     return {
       status: "PASSED",
       reference: rcNumber,
       details: entity,
-      message: "CAC registration verified",
+      message: "CAC registration verified successfully",
     };
   } catch (err: any) {
+    const msg = err?.response?.data?.error || err?.response?.data?.message || "CAC verification service error";
     console.error("CAC verification error:", err?.response?.data || err.message);
-    return {
-      status: "FAILED",
-      message: err?.response?.data?.error || "CAC verification failed",
-    };
+    return { status: "FAILED", reference: rcNumber, message: msg };
   }
 }

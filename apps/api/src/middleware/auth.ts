@@ -32,7 +32,7 @@ export function requireAuth(
 export function requireRole(...roles: AuthTokenPayload["role"][]) {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: "Forbidden" });
+      return res.status(403).json({ success: false, message: "You do not have permission to access this. Make sure you are signed in as an Analyst." });
     }
     next();
   };

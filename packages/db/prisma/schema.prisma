@@ -128,6 +128,7 @@ model Director {
 
   firstName    String
   lastName     String
+  dateOfBirth  String?
   bvn          String
   nin          String?
   phone        String

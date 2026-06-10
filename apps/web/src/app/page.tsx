@@ -34,7 +34,7 @@ export default function HomePage() {
           {[
             { label: "KYC Verified", value: "< 24hrs" },
             { label: "Credit Decision", value: "48–72hrs" },
-            { label: "Max Facility", value: "₦500M" },
+            { label: "Max Facility", value: "₦1Bn" },
           ].map(({ label, value }) => (
             <div
               key={label}

@@ -2,6 +2,9 @@ import { Router, Response } from "express";
 import { z } from "zod";
 import { prisma } from "@tradefinance/db";
 import { requireAuth, AuthRequest, requireRole } from "../middleware/auth";
+import { verifyBVN, verifyCAC } from "../services/kyc";
+import { sendApplicationSubmitted, sendKYCResult } from "../services/email";
+import { audit, AuditAction } from "../services/audit";
 
 const router = Router();
 
@@ -67,8 +70,32 @@ router.post("/:id/submit", async (req: AuthRequest, res: Response) => {
 
   const updated = await prisma.loanApplication.update({
     where: { id: application.id },
-    data: { status: "SUBMITTED", submittedAt: new Date() },
+    data: { status: "KYC_PENDING", submittedAt: new Date() },
   });
+
+  audit({ entityType: "LoanApplication", entityId: application.id, action: AuditAction.APPLICATION_SUBMITTED, actorId: req.user!.userId, req });
+
+  // Fire KYC + confirmation email in background (non-blocking)
+  const fullApp = await prisma.loanApplication.findUnique({
+    where: { id: application.id },
+    include: { business: { include: { user: true } } },
+  });
+
+  if (fullApp) {
+    sendApplicationSubmitted({
+      to: fullApp.business.user.email,
+      firstName: fullApp.business.user.firstName,
+      businessName: fullApp.business.registeredName,
+      referenceNumber: fullApp.referenceNumber,
+      amountRequested: Number(fullApp.amountRequested),
+      tenor: fullApp.tenor,
+      commodityType: fullApp.commodityType,
+    }).catch((err) => console.error("Email error:", err));
+  }
+
+  runKYCChecks(application.id).catch((err) =>
+    console.error("Background KYC error:", err)
+  );
 
   return res.json({ success: true, data: updated });
 });
@@ -123,6 +150,15 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
   return res.json({ success: true, data: application });
 });
 
+// Get audit timeline for an application
+router.get("/:id/timeline", async (req: AuthRequest, res: Response) => {
+  const logs = await prisma.auditLog.findMany({
+    where: { entityType: "LoanApplication", entityId: req.params.id },
+    orderBy: { createdAt: "asc" },
+  });
+  return res.json({ success: true, data: logs });
+});
+
 // List all applications (analyst/admin)
 router.get(
   "/",
@@ -136,7 +172,7 @@ router.get(
       prisma.loanApplication.findMany({
         where,
         include: {
-          business: { select: { registeredName: true, cacNumber: true, commodities: true } },
+          business: { select: { registeredName: true, cacNumber: true, commodities: true, state: true } },
           creditProfile: { select: { totalScore: true, scoreGrade: true, recommendation: true } },
           analystReview: { select: { decision: true, analystId: true } },
         },
@@ -159,3 +195,84 @@ router.get(
 );
 
 export default router;
+
+// Background KYC runner — fires after submit, does not block the response
+async function runKYCChecks(applicationId: string) {
+  const application = await prisma.loanApplication.findUnique({
+    where: { id: applicationId },
+    include: { business: { include: { directors: true } } },
+  });
+  if (!application) return;
+
+  const checks: { status: string }[] = [];
+
+  // BVN for each director
+  for (const director of application.business.directors) {
+    const result = await verifyBVN(director.bvn, director.dateOfBirth || "");
+    const status = result.status === "PASSED" ? "PASSED" : result.status === "PENDING" ? "PENDING" : "FAILED";
+    checks.push({ status });
+
+    await prisma.director.update({
+      where: { id: director.id },
+      data: { kycStatus: status as any, kycReference: result.reference },
+    });
+
+    await prisma.kYCCheck.create({
+      data: {
+        businessId: application.businessId,
+        applicationId,
+        checkType: "BVN",
+        provider: "dojah",
+        reference: result.reference,
+        status: status as any,
+        rawResponse: result.details as any,
+        notes: result.message,
+      },
+    });
+  }
+
+  // CAC
+  const cacResult = await verifyCAC(application.business.cacNumber);
+  const cacStatus = cacResult.status === "PASSED" ? "PASSED" : cacResult.status === "PENDING" ? "PENDING" : "FAILED";
+  checks.push({ status: cacStatus });
+
+  await prisma.kYCCheck.create({
+    data: {
+      businessId: application.businessId,
+      applicationId,
+      checkType: "CAC",
+      provider: "dojah",
+      reference: cacResult.reference,
+      status: cacStatus as any,
+      rawResponse: cacResult.details as any,
+      notes: cacResult.message,
+    },
+  });
+
+  // Update application status based on results
+  const anyFailed = checks.every((c) => c.status === "FAILED");
+  const allPassed = checks.every((c) => c.status === "PASSED");
+  const finalStatus = anyFailed ? "KYC_FAILED" : allPassed ? "KYC_VERIFIED" : "KYC_PENDING";
+
+  await prisma.loanApplication.update({
+    where: { id: applicationId },
+    data: { status: finalStatus as any },
+  });
+
+  // Send KYC result email
+  const appWithUser = await prisma.loanApplication.findUnique({
+    where: { id: applicationId },
+    include: { business: { include: { user: true } } },
+  });
+  if (appWithUser) {
+    sendKYCResult({
+      to: appWithUser.business.user.email,
+      firstName: appWithUser.business.user.firstName,
+      referenceNumber: appWithUser.referenceNumber,
+      passed: finalStatus === "KYC_VERIFIED",
+      details: finalStatus === "KYC_PENDING"
+        ? "Some checks are pending provider configuration."
+        : undefined,
+    }).catch((err) => console.error("KYC email error:", err));
+  }
+}
