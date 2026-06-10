@@ -62,6 +62,8 @@ export default function ApplicationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [runningKyc, setRunningKyc] = useState(false);
+  const [runningBvn, setRunningBvn] = useState<Record<string, boolean>>({});
+  const [runningCac, setRunningCac] = useState(false);
   const [timeline, setTimeline] = useState<{ id: string; action: string; createdAt: string; changes?: any }[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
   const [pageError, setPageError] = useState("");
@@ -110,6 +112,33 @@ export default function ApplicationDetailPage() {
       setPageError(parseApiError(err));
     } finally {
       setRunningKyc(false);
+    }
+  };
+
+  const handleRunBvn = async (directorId: string, bvn: string, dateOfBirth: string) => {
+    setRunningBvn((p) => ({ ...p, [directorId]: true }));
+    setPageError("");
+    try {
+      await api.post(`/api/kyc/bvn`, { directorId, bvn, dateOfBirth: dateOfBirth || "1900-01-01" });
+      await fetchApp();
+    } catch (err: any) {
+      setPageError(parseApiError(err));
+    } finally {
+      setRunningBvn((p) => ({ ...p, [directorId]: false }));
+    }
+  };
+
+  const handleRunCac = async () => {
+    if (!app) return;
+    setRunningCac(true);
+    setPageError("");
+    try {
+      await api.post(`/api/kyc/cac`, { applicationId: id, cacNumber: app.business.cacNumber });
+      await fetchApp();
+    } catch (err: any) {
+      setPageError(parseApiError(err));
+    } finally {
+      setRunningCac(false);
     }
   };
 
@@ -190,60 +219,65 @@ export default function ApplicationDetailPage() {
         {/* KYC Verification */}
         {app.status !== "DRAFT" && (
           <section className="bg-white rounded-xl border border-slate-200 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-5">
               <div>
                 <h2 className="font-semibold text-slate-900">KYC Verification</h2>
-                <p className="text-slate-500 text-xs mt-0.5">BVN and CAC checks run automatically on submission</p>
+                <p className="text-slate-500 text-xs mt-0.5">Verify each check individually or run all at once</p>
               </div>
-              {(app.status === "KYC_FAILED" || app.status === "KYC_PENDING") && (
-                <button
-                  onClick={handleRunKyc}
-                  disabled={runningKyc}
-                  className="flex items-center gap-1.5 text-xs font-medium bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  {runningKyc ? <><Spinner className="w-3 h-3" /> Running...</> : "↺ Re-run checks"}
-                </button>
-              )}
+              <button
+                onClick={handleRunKyc}
+                disabled={runningKyc}
+                className="flex items-center gap-1.5 text-xs border border-slate-200 hover:border-slate-400 disabled:opacity-50 text-slate-600 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {runningKyc ? <><Spinner className="w-3 h-3" /> Running...</> : "↺ Run All"}
+              </button>
             </div>
 
-            {/* Director BVN status */}
-            {app.business?.directors?.length > 0 && (
-              <div className="mb-4">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Directors — BVN</p>
-                <div className="space-y-2">
-                  {app.business.directors.map((dir) => (
-                    <div key={dir.id} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                      <span className="text-sm text-slate-700">{dir.firstName} {dir.lastName}</span>
-                      <KYCBadge status={dir.kycStatus} />
-                    </div>
+            <div className="space-y-3">
+              {/* CAC */}
+              <div className="flex items-center justify-between py-2.5 border-b border-slate-100">
+                <div>
+                  <p className="text-sm font-medium text-slate-800">🏢 CAC Registration</p>
+                  <p className="text-xs text-slate-400">{app.business.cacNumber}</p>
+                  {app.kycChecks.filter((c) => c.checkType === "CAC").slice(-1).map((c) => (
+                    c.notes && <p key={c.id} className="text-xs text-slate-500 mt-0.5">{c.notes}</p>
                   ))}
                 </div>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const latest = app.kycChecks.filter((c) => c.checkType === "CAC").slice(-1)[0];
+                    return latest ? <KYCBadge status={latest.status} /> : <KYCBadge status="PENDING" />;
+                  })()}
+                  <button
+                    onClick={handleRunCac}
+                    disabled={runningCac}
+                    className="flex items-center gap-1 text-xs bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    {runningCac ? <><Spinner className="w-3 h-3" /> Running...</> : "Verify"}
+                  </button>
+                </div>
               </div>
-            )}
 
-            {/* CAC + other checks */}
-            {app.kycChecks?.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Business — CAC</p>
-                {app.kycChecks
-                  .filter((c) => c.checkType === "CAC")
-                  .slice(-1)
-                  .map((check) => (
-                    <div key={check.id} className="flex items-center justify-between py-2">
-                      <div>
-                        <span className="text-sm text-slate-700">CAC Registration · {app.business.cacNumber}</span>
-                        {check.notes && <p className="text-xs text-slate-400 mt-0.5">{check.notes}</p>}
-                      </div>
-                      <KYCBadge status={check.status} />
-                    </div>
-                  ))}
-              </div>
-            )}
-
-            {/* No checks yet */}
-            {(!app.kycChecks || app.kycChecks.length === 0) && (
-              <p className="text-sm text-slate-400">KYC checks pending. They run automatically after submission.</p>
-            )}
+              {/* Directors BVN */}
+              {app.business?.directors?.map((dir) => (
+                <div key={dir.id} className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">👤 {dir.firstName} {dir.lastName}</p>
+                    <p className="text-xs text-slate-400">BVN verification</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <KYCBadge status={dir.kycStatus} />
+                    <button
+                      onClick={() => handleRunBvn(dir.id, dir.bvn, (dir as any).dateOfBirth || "")}
+                      disabled={!!runningBvn[dir.id]}
+                      className="flex items-center gap-1 text-xs bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      {runningBvn[dir.id] ? <><Spinner className="w-3 h-3" /> Running...</> : "Verify"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 
