@@ -49,7 +49,7 @@ export default function AdminOverviewPage() {
     <AdminShell>
       <div className="px-8 py-7 max-w-5xl">
         <div className="mb-7">
-          <h1 className="text-xl font-bold text-white">Platform Overview</h1>
+          <h1 className="font-display text-xl font-bold text-white">Platform Overview</h1>
           <p className="text-zinc-500 text-sm mt-0.5">Real-time platform statistics</p>
         </div>
 
@@ -79,8 +79,8 @@ export default function AdminOverviewPage() {
             </div>
 
             {/* Application pipeline */}
-            <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
-              <h2 className="text-sm font-semibold text-white mb-4">Application Pipeline</h2>
+            <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-5">
+              <h2 className="font-display text-sm font-semibold text-white mb-4">Application Pipeline</h2>
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: "Draft", key: "DRAFT" },
@@ -104,8 +104,8 @@ export default function AdminOverviewPage() {
             </div>
 
             {/* KYC breakdown */}
-            <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
-              <h2 className="text-sm font-semibold text-white mb-4">KYC Checks</h2>
+            <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-5">
+              <h2 className="font-display text-sm font-semibold text-white mb-4">KYC Checks</h2>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-400">{stats.kyc.passed}</div>
@@ -135,9 +135,9 @@ export default function AdminOverviewPage() {
 
             {/* Recent applications */}
             {stats.recentApplications.length > 0 && (
-              <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
+              <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-white">Recent Applications</h2>
+                  <h2 className="font-display text-sm font-semibold text-white">Recent Applications</h2>
                   <Link href="/admin/users" className="text-xs text-zinc-400 hover:text-white transition-colors">
                     View all users →
                   </Link>
@@ -170,7 +170,7 @@ export default function AdminOverviewPage() {
 
 function StatCard({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
   return (
-    <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
+    <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-5">
       <p className="text-xs text-zinc-500 font-medium mb-1">{label}</p>
       <p className="text-3xl font-bold text-white">{value}</p>
       {sub && <p className="text-xs text-zinc-500 mt-1">{sub}</p>}

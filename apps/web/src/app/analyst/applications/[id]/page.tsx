@@ -312,7 +312,7 @@ export default function AnalystApplicationPage() {
 
         {/* Credit score banner */}
         {app.creditProfile && (
-          <div className="bg-white border border-slate-200 rounded-xl p-5 mb-5 flex items-center gap-6">
+          <div className="bg-white border border-slate-100 rounded-2xl p-5 mb-5 flex items-center gap-6 shadow-sm">
             <div className="text-center">
               <div className={`text-5xl font-bold ${SCORE_COLOR(app.creditProfile.totalScore)}`}>
                 {app.creditProfile.totalScore}
@@ -373,22 +373,23 @@ export default function AnalystApplicationPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-slate-200 mb-5">
-          {(["overview", "documents", "kyc", "decision"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors capitalize ${
-                activeTab === tab
-                  ? "border-slate-900 text-slate-900"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {tab === "decision" && !hasDecision ? "📝 Decision" : tab.charAt(0).toUpperCase() + tab.slice(1)}
-              {tab === "documents" && ` (${app.documents.length})`}
-              {tab === "kyc" && ` (${app.kycChecks.length})`}
-            </button>
-          ))}
+        <div className="flex gap-1.5 mb-5 flex-wrap">
+          {(["overview", "documents", "kyc", "decision"] as const).map((tab) => {
+            const label =
+              tab === "documents" ? `Documents (${app.documents.length})` :
+              tab === "kyc" ? `KYC (${app.kycChecks.length})` :
+              tab === "decision" && !hasDecision ? "📝 Decision" :
+              tab.charAt(0).toUpperCase() + tab.slice(1);
+            return (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                style={activeTab === tab
+                  ? { background: "linear-gradient(135deg, #f5a623, #e0850d)", color: "#070c1a" }
+                  : { background: "white", border: "1px solid #e2e8f0", color: "#64748b" }}>
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Overview Tab */}
@@ -458,8 +459,6 @@ export default function AnalystApplicationPage() {
                 <Stat label="State" value={app.business.state} />
                 <Stat label="Years Operating" value={app.business.yearsInOperation ? `${app.business.yearsInOperation} years` : "—"} />
                 <Stat label="Annual Turnover" value={app.business.annualTurnover ? `₦${Number(app.business.annualTurnover).toLocaleString()}` : "—"} />
-                <Stat label="Commodities" value={app.business.commodities.map(c => c.replace(/_/g, " ")).join(", ") || "—"} />
-                <Stat label="Export Markets" value={app.business.exportMarkets?.join(", ") || "None"} />
               </dl>
             </Section>
 
@@ -833,8 +832,8 @@ export default function AnalystApplicationPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
-      <h3 className="font-semibold text-slate-900 mb-4">{title}</h3>
+    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+      <h3 className="font-display font-semibold text-slate-900 mb-5">{title}</h3>
       {children}
     </div>
   );

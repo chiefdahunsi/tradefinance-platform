@@ -108,7 +108,7 @@ export default function AdminUsersPage() {
       <div className="px-8 py-7 max-w-5xl">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-white">Users</h1>
+            <h1 className="font-display text-xl font-bold text-white">Users</h1>
             <p className="text-zinc-500 text-sm mt-0.5">Manage platform users and provision new accounts</p>
           </div>
           <button
@@ -128,8 +128,8 @@ export default function AdminUsersPage() {
 
         {/* Provision form */}
         {showProvision && (
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 mb-6">
-            <h2 className="text-sm font-semibold text-white mb-4">Provision New Account</h2>
+          <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6 mb-6">
+            <h2 className="font-display text-sm font-semibold text-white mb-4">Provision New Account</h2>
 
             {provisionSuccess && (
               <div className="mb-4 bg-green-950/50 border border-green-800 text-green-300 text-sm px-4 py-3 rounded-lg">
@@ -212,11 +212,11 @@ export default function AdminUsersPage() {
         {loading ? (
           <div className="text-zinc-500 text-sm">Loading...</div>
         ) : users.length === 0 ? (
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-12 text-center text-zinc-500">
+          <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-12 text-center text-zinc-500">
             No users found.
           </div>
         ) : (
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+          <div className="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="border-b border-zinc-800">
                 <tr>

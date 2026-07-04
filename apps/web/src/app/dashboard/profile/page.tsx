@@ -42,15 +42,8 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
 
   const [form, setForm] = useState({
-    tradingName: "",
-    taxId: "",
-    address: "",
-    city: "",
-    state: "Lagos",
-    website: "",
-    yearsInOperation: "",
-    annualTurnover: "",
-    monthlyEnergyBill: "",
+    tradingName: "", taxId: "", address: "", city: "", state: "Lagos",
+    website: "", yearsInOperation: "", annualTurnover: "", monthlyEnergyBill: "",
   });
 
   useEffect(() => {
@@ -74,14 +67,11 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const set = (field: string) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const handleSave = async () => {
-    setSaving(true);
-    setError("");
-    setSuccess("");
+    setSaving(true); setError(""); setSuccess("");
     try {
       const payload = {
         registeredName: business!.registeredName,
@@ -105,124 +95,153 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400">Loading...</div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "#f8fafc" }}>
+      <Spinner className="w-5 h-5" />
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.push("/dashboard")} className="text-slate-400 hover:text-slate-600">←</button>
-          <div>
-            <h1 className="text-lg font-bold text-slate-900">Business Profile</h1>
-            <p className="text-slate-500 text-sm">{business?.registeredName}</p>
+    <div className="min-h-screen" style={{ background: "#f8fafc" }}>
+      {/* Header */}
+      <header className="bg-white border-b border-slate-100 px-6 sticky top-0 z-20">
+        <div className="max-w-2xl mx-auto flex items-center justify-between h-16">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push("/dashboard")} className="text-slate-400 hover:text-slate-600 transition-colors">←</button>
+            <div>
+              <h1 className="font-display font-bold text-slate-900">Business Profile</h1>
+              <p className="text-slate-400 text-xs">{business?.registeredName}</p>
+            </div>
           </div>
+          {!editing ? (
+            <button onClick={() => setEditing(true)}
+              className="text-sm font-semibold px-4 py-2 rounded-xl text-white transition-all"
+              style={{ background: "linear-gradient(135deg, #f5a623, #e0850d)" }}>
+              Edit Profile
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={() => { setEditing(false); setError(""); }}
+                className="text-sm font-medium px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleSave} disabled={saving}
+                className="text-sm font-semibold px-4 py-2 rounded-xl text-white flex items-center gap-2 disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg, #f5a623, #e0850d)" }}>
+                {saving && <Spinner />}
+                {saving ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+          )}
         </div>
-        {!editing && (
-          <button onClick={() => setEditing(true)} className="text-sm font-medium bg-slate-900 hover:bg-slate-700 text-white px-4 py-2 rounded-lg">
-            Edit Profile
-          </button>
-        )}
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-8 space-y-6">
-        {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">{error}</div>}
-        {success && <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg">{success}</div>}
+      <main className="max-w-2xl mx-auto px-6 py-8 space-y-5">
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>}
+        {success && (
+          <div className="rounded-xl px-4 py-3 text-sm font-medium"
+            style={{ background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.2)", color: "#15803d" }}>
+            ✓ {success}
+          </div>
+        )}
 
-        {/* Read-only: Registration Details */}
-        <section className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="font-semibold text-slate-900 mb-1">Registration Details</h2>
-          <p className="text-xs text-slate-400 mb-4">These fields are locked. Contact support to make changes.</p>
-          <div className="grid grid-cols-2 gap-4">
+        {/* Registration Details — read only */}
+        <section className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display font-semibold text-slate-900">Registration Details</h2>
+            <span className="text-xs text-slate-400 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg">Read-only</span>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">Contact support to make changes to these fields.</p>
+          <div className="grid grid-cols-2 gap-5">
             <ReadField label="Registered Name" value={business?.registeredName} />
-            <ReadField label="CAC Number" value={business?.cacNumber} />
+            <ReadField label="CAC Number" value={business?.cacNumber} mono />
             <ReadField label="Business Type" value={business?.businessType} />
             <ReadField label="Sector" value={business?.sector} />
             {business?.dateIncorporated && (
-              <ReadField label="Date of Incorporation" value={new Date(business.dateIncorporated).toLocaleDateString("en-NG")} />
+              <ReadField label="Date of Incorporation"
+                value={new Date(business.dateIncorporated).toLocaleDateString("en-NG")} />
             )}
           </div>
         </section>
 
-        {/* Editable: Contact Info */}
-        <section className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Contact Information</h2>
+        {/* Contact Information */}
+        <section className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <h2 className="font-display font-semibold text-slate-900 mb-5">Contact Information</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <EditableField label="Trading Name" value={form.tradingName || "—"} editing={editing}>
-                <input value={form.tradingName} onChange={set("tradingName")} className={input} placeholder="If different from registered name" />
-              </EditableField>
-              <EditableField label="Tax ID (TIN)" value={form.taxId || "—"} editing={editing}>
-                <input value={form.taxId} onChange={set("taxId")} className={input} placeholder="12345678-0001" />
-              </EditableField>
+              <EditField label="Trading Name" value={form.tradingName || "—"} editing={editing}>
+                <input value={form.tradingName} onChange={set("tradingName")} className={inp} placeholder="If different from registered name" />
+              </EditField>
+              <EditField label="Tax ID (TIN)" value={form.taxId || "—"} editing={editing}>
+                <input value={form.taxId} onChange={set("taxId")} className={inp} placeholder="12345678-0001" />
+              </EditField>
             </div>
-            <EditableField label="Registered Address" value={form.address} editing={editing}>
-              <input value={form.address} onChange={set("address")} className={input} placeholder="12 Commerce Road" />
-            </EditableField>
+            <EditField label="Registered Address" value={form.address} editing={editing}>
+              <input value={form.address} onChange={set("address")} className={inp} placeholder="12 Commerce Road" />
+            </EditField>
             <div className="grid grid-cols-2 gap-4">
-              <EditableField label="City" value={form.city} editing={editing}>
-                <input value={form.city} onChange={set("city")} className={input} placeholder="Lagos" />
-              </EditableField>
-              <EditableField label="State" value={form.state} editing={editing}>
-                <select value={form.state} onChange={set("state")} className={input}>
+              <EditField label="City" value={form.city} editing={editing}>
+                <input value={form.city} onChange={set("city")} className={inp} placeholder="Lagos" />
+              </EditField>
+              <EditField label="State" value={form.state} editing={editing}>
+                <select value={form.state} onChange={set("state")} className={inp}>
                   {NIGERIAN_STATES.map((s) => <option key={s}>{s}</option>)}
                 </select>
-              </EditableField>
+              </EditField>
             </div>
-            <EditableField label="Website" value={form.website || "—"} editing={editing}>
-              <input type="url" value={form.website} onChange={set("website")} className={input} placeholder="https://yourcompany.com" />
-            </EditableField>
+            <EditField label="Website" value={form.website || "—"} editing={editing}>
+              <input type="url" value={form.website} onChange={set("website")} className={inp} placeholder="https://yourcompany.com" />
+            </EditField>
           </div>
         </section>
 
-        {/* Editable: Financial & Energy Profile */}
-        <section className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Financial & Energy Profile</h2>
+        {/* Financial & Energy Profile */}
+        <section className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <div className="flex items-start gap-3 mb-5">
+            <div>
+              <h2 className="font-display font-semibold text-slate-900">Financial & Energy Profile</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Used to calculate your loan eligibility and solar savings</p>
+            </div>
+          </div>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <EditableField label="Years in Operation" value={business?.yearsInOperation?.toString() || "—"} editing={editing}>
-                <input type="number" min="0" value={form.yearsInOperation} onChange={set("yearsInOperation")} className={input} placeholder="5" />
-              </EditableField>
-              <EditableField label="Annual Turnover (₦)" value={business?.annualTurnover ? `₦${Number(business.annualTurnover).toLocaleString()}` : "—"} editing={editing}>
-                <input type="number" min="0" value={form.annualTurnover} onChange={set("annualTurnover")} className={input} placeholder="50000000" />
-              </EditableField>
+              <EditField label="Years in Operation" value={business?.yearsInOperation?.toString() || "—"} editing={editing}>
+                <input type="number" min="0" value={form.yearsInOperation} onChange={set("yearsInOperation")} className={inp} placeholder="5" />
+              </EditField>
+              <EditField label="Annual Turnover (₦)"
+                value={business?.annualTurnover ? `₦${Number(business.annualTurnover).toLocaleString()}` : "—"}
+                editing={editing}>
+                <input type="number" min="0" value={form.annualTurnover} onChange={set("annualTurnover")} className={inp} placeholder="50,000,000" />
+              </EditField>
             </div>
-            <EditableField label="Monthly Electricity / Generator Cost (₦)" value={business?.monthlyEnergyBill ? `₦${Number(business.monthlyEnergyBill).toLocaleString()}` : "—"} editing={editing}>
-              <input type="number" min="0" value={form.monthlyEnergyBill} onChange={set("monthlyEnergyBill")} className={input} placeholder="800000" />
-            </EditableField>
+            <EditField label="Monthly Electricity / Generator Cost (₦)"
+              value={business?.monthlyEnergyBill ? `₦${Number(business.monthlyEnergyBill).toLocaleString()}` : "—"}
+              editing={editing}>
+              <input type="number" min="0" value={form.monthlyEnergyBill} onChange={set("monthlyEnergyBill")} className={inp} placeholder="800,000" />
+            </EditField>
           </div>
         </section>
-
-        {editing && (
-          <div className="flex gap-3 pb-8">
-            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-green-600 hover:bg-green-500 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-lg">
-              {saving && <Spinner />}{saving ? "Saving..." : "Save Changes"}
-            </button>
-            <button onClick={() => { setEditing(false); setError(""); }} className="border border-slate-200 hover:border-slate-400 text-slate-600 font-medium px-6 py-2.5 rounded-lg">
-              Cancel
-            </button>
-          </div>
-        )}
       </main>
     </div>
   );
 }
 
-function ReadField({ label, value }: { label: string; value?: string }) {
+function ReadField({ label, value, mono }: { label: string; value?: string; mono?: boolean }) {
   return (
     <div>
-      <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
-      <p className="text-sm text-slate-800">{value || "—"}</p>
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">{label}</p>
+      <p className={`text-sm text-slate-800 ${mono ? "font-mono" : "font-medium"}`}>{value || "—"}</p>
     </div>
   );
 }
 
-function EditableField({ label, value, editing, children }: { label: string; value: string; editing: boolean; children: React.ReactNode }) {
+function EditField({ label, value, editing, children }: { label: string; value: string; editing: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
-      {editing ? children : <p className="text-sm text-slate-800 py-2">{value || "—"}</p>}
+      <label className="block text-sm font-semibold text-slate-700 mb-1.5">{label}</label>
+      {editing ? children : <p className="text-sm text-slate-700 py-2.5 border-b border-slate-100">{value || "—"}</p>}
     </div>
   );
 }
 
-const input = "w-full border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white";
+const inp = "w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50 transition-colors";

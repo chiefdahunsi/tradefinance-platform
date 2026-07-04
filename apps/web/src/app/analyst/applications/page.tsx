@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { AnalystShell } from "@/components/layout/analyst-shell";
 import { parseApiError } from "@/lib/errors";
+import { Spinner } from "@/components/shared/spinner";
 
 interface Application {
   id: string;
@@ -19,18 +20,22 @@ interface Application {
   analystReview?: { decision: string };
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  SUBMITTED: "bg-blue-50 text-blue-700",
-  KYC_PENDING: "bg-yellow-50 text-yellow-700",
-  KYC_VERIFIED: "bg-green-50 text-green-700",
-  KYC_FAILED: "bg-red-50 text-red-700",
-  UNDER_REVIEW: "bg-purple-50 text-purple-700",
-  APPROVED: "bg-green-50 text-green-800",
-  DECLINED: "bg-red-50 text-red-800",
-  MORE_INFO_REQUIRED: "bg-orange-50 text-orange-700",
+const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
+  SUBMITTED:          { label: "Submitted",        color: "#2563eb", bg: "#eff6ff" },
+  KYC_PENDING:        { label: "KYC Pending",      color: "#d97706", bg: "#fffbeb" },
+  KYC_VERIFIED:       { label: "KYC Verified",     color: "#16a34a", bg: "#f0fdf4" },
+  KYC_FAILED:         { label: "KYC Failed",       color: "#dc2626", bg: "#fef2f2" },
+  UNDER_REVIEW:       { label: "Under Review",     color: "#7c3aed", bg: "#f5f3ff" },
+  APPROVED:           { label: "Approved",         color: "#15803d", bg: "#dcfce7" },
+  DECLINED:           { label: "Declined",         color: "#b91c1c", bg: "#fee2e2" },
+  MORE_INFO_REQUIRED: { label: "More Info Needed", color: "#ea580c", bg: "#fff7ed" },
 };
 
-const STATUSES = ["ALL", "SUBMITTED", "UNDER_REVIEW", "APPROVED", "DECLINED", "MORE_INFO_REQUIRED"];
+const GRADE_COLOR: Record<string, string> = {
+  A: "#16a34a", B: "#65a30d", C: "#d97706", D: "#ea580c", E: "#dc2626", F: "#9f1239",
+};
+
+const STATUSES = ["ALL", "SUBMITTED", "UNDER_REVIEW", "KYC_VERIFIED", "APPROVED", "DECLINED", "MORE_INFO_REQUIRED"];
 
 export default function AllApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
@@ -67,89 +72,97 @@ export default function AllApplicationsPage() {
     <AnalystShell>
       <div className="px-8 py-7">
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-slate-900">All Applications</h1>
+          <h1 className="font-display text-xl font-bold text-slate-900">All Applications</h1>
           <p className="text-slate-500 text-sm mt-0.5">All submitted facility applications</p>
         </div>
 
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg flex justify-between">
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex justify-between">
             <span>{error}</span>
-            <button onClick={() => setError("")} className="text-red-400 hover:text-red-600">✕</button>
+            <button onClick={() => setError("")} className="text-red-400 hover:text-red-600 ml-3">✕</button>
           </div>
         )}
 
         {/* Status filter tabs */}
         <div className="flex gap-1.5 mb-5 flex-wrap">
           {STATUSES.map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatus(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                status === s
-                  ? "bg-slate-900 text-white"
-                  : "bg-white border border-slate-200 text-slate-600 hover:border-slate-400"
-              }`}
-            >
+            <button key={s} onClick={() => setStatus(s)}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+              style={status === s
+                ? { background: "linear-gradient(135deg, #f5a623, #e0850d)", color: "#070c1a" }
+                : { background: "white", border: "1px solid #e2e8f0", color: "#64748b" }}>
               {s.replace(/_/g, " ")}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <div className="text-slate-400 text-sm">Loading...</div>
+          <div className="text-slate-400 text-sm flex items-center gap-2">
+            <Spinner className="w-4 h-4 text-slate-400" /> Loading…
+          </div>
         ) : applications.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400">
+          <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400 shadow-sm">
             No applications found.
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="border-b border-slate-100">
                 <tr>
                   {["Business", "System Type", "Amount", "Tenor", "Status", "Score", ""].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {applications.map((app) => (
-                  <tr key={app.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-slate-900">{app.business.registeredName}</p>
-                      <p className="text-xs text-slate-400 font-mono">{app.referenceNumber.slice(0, 8).toUpperCase()}</p>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{app.systemType.replace(/_/g, " ")}</td>
-                    <td className="px-4 py-3 text-slate-700 font-medium">₦{Number(app.amountRequested).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-slate-600">{app.tenor}m</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[app.status] ?? "bg-slate-100 text-slate-600"}`}>
-                        {app.status.replace(/_/g, " ")}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {app.creditProfile ? (
-                        <span className="font-semibold text-slate-700">{app.creditProfile.totalScore} <span className="text-slate-400 font-normal text-xs">/ 100</span></span>
-                      ) : (
-                        <span className="text-slate-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {app.analystReview ? (
-                        <Link href={`/analyst/applications/${app.id}`} className="text-xs text-blue-600 hover:underline font-medium">
-                          View →
-                        </Link>
-                      ) : (
-                        <button
-                          onClick={(e) => assignToSelf(e, app.id)}
-                          disabled={assigning === app.id}
-                          className="text-xs text-green-600 hover:text-green-800 font-medium disabled:opacity-50"
-                        >
-                          {assigning === app.id ? "Assigning..." : "Assign to me"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-slate-50">
+                {applications.map((app) => {
+                  const meta = STATUS_META[app.status];
+                  const grade = app.creditProfile?.scoreGrade;
+                  return (
+                    <tr key={app.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-slate-900">{app.business.registeredName}</p>
+                        <p className="text-xs text-slate-400 font-mono mt-0.5">{app.referenceNumber.slice(0, 8).toUpperCase()}</p>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 text-xs">{app.systemType.replace(/_/g, " ")}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-800">₦{Number(app.amountRequested).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-slate-500">{app.tenor}m</td>
+                      <td className="px-4 py-3">
+                        {meta ? (
+                          <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                            style={{ color: meta.color, background: meta.bg }}>
+                            {meta.label}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">{app.status.replace(/_/g, " ")}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {app.creditProfile ? (
+                          <span className="font-display font-bold text-base" style={{ color: GRADE_COLOR[grade ?? "F"] ?? "#64748b" }}>
+                            {app.creditProfile.totalScore}
+                            <span className="text-slate-300 font-normal text-xs ml-0.5">/100</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {app.analystReview ? (
+                          <Link href={`/analyst/applications/${app.id}`}
+                            className="text-xs font-semibold hover:underline" style={{ color: "#f5a623" }}>
+                            View →
+                          </Link>
+                        ) : (
+                          <button onClick={(e) => assignToSelf(e, app.id)} disabled={assigning === app.id}
+                            className="text-xs font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-50 transition-colors">
+                            {assigning === app.id ? "Assigning…" : "Assign to me"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

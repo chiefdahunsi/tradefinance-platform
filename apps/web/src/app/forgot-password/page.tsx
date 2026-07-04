@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
+import { Spinner } from "@/components/shared/spinner";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -13,8 +14,7 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       await api.post("/api/auth/forgot-password", { email });
       setSubmitted(true);
@@ -26,80 +26,67 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-green-600 mb-4">
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">Reset your password</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Enter your email and we'll send you a reset link
-          </p>
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" style={{ background: "#f8fafc" }}>
+      {/* Subtle top accent */}
+      <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "linear-gradient(90deg, #f5a623, #e0850d)" }} />
+
+      <div className="w-full max-w-md animate-fade-up">
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-2.5 mb-10">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+              style={{ background: "linear-gradient(135deg, #f5a623, #e8920f)" }}>☀</span>
+            <span className="font-display font-bold text-slate-900 text-lg tracking-tight">SolarCredit</span>
+          </Link>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+        <div className="bg-white rounded-2xl border border-slate-100 p-8 shadow-sm">
           {submitted ? (
-            <div className="text-center">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h2 className="font-semibold text-slate-900 mb-2">Check your email</h2>
+            <div className="text-center py-4">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"
+                style={{ background: "rgba(245,166,35,0.1)" }}>✉</div>
+              <h2 className="font-display font-bold text-slate-900 text-lg mb-2">Check your email</h2>
               <p className="text-sm text-slate-500 leading-relaxed">
-                If an account exists for <strong>{email}</strong>, you'll receive a password
-                reset link within a few minutes.
+                If an account exists for <span className="font-medium text-slate-700">{email}</span>, you&apos;ll receive a reset link within a few minutes.
               </p>
               <p className="text-xs text-slate-400 mt-4">
-                Didn't receive it? Check your spam folder or{" "}
-                <button
-                  onClick={() => { setSubmitted(false); setEmail(""); }}
-                  className="text-green-600 hover:underline"
-                >
+                Didn&apos;t receive it? Check your spam folder or{" "}
+                <button onClick={() => { setSubmitted(false); setEmail(""); }}
+                  className="font-medium hover:underline" style={{ color: "#f5a623" }}>
                   try again
                 </button>.
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-                  {error}
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Email address
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoFocus
-                  placeholder="you@company.com"
-                  className="w-full border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+            <>
+              <div className="mb-6">
+                <h1 className="font-display text-xl font-bold text-slate-900">Reset your password</h1>
+                <p className="text-slate-500 text-sm mt-1">Enter your email — we&apos;ll send a reset link</p>
               </div>
-              <button
-                type="submit"
-                disabled={loading || !email}
-                className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
-              >
-                {loading ? "Sending..." : "Send Reset Link"}
-              </button>
-            </form>
+              {error && (
+                <div className="mb-5 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email address</label>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    required autoFocus placeholder="you@company.com"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none bg-slate-50 transition-colors" />
+                </div>
+                <button type="submit" disabled={loading || !email}
+                  className="w-full font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-white"
+                  style={{ background: "linear-gradient(135deg, #f5a623, #e0850d)" }}>
+                  {loading && <Spinner />}
+                  {loading ? "Sending…" : "Send Reset Link →"}
+                </button>
+              </form>
+            </>
           )}
         </div>
 
         <p className="text-center text-sm text-slate-500 mt-6">
           Remember your password?{" "}
-          <Link href="/sign-in" className="text-green-600 font-medium hover:underline">
-            Sign in
-          </Link>
+          <Link href="/sign-in" className="font-semibold hover:underline" style={{ color: "#f5a623" }}>Sign in</Link>
         </p>
       </div>
     </div>
