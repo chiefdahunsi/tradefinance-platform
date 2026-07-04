@@ -69,7 +69,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-56 bg-zinc-900 border-r border-zinc-800 flex flex-col">
         <div className="px-5 py-5 border-b border-zinc-800">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">TradeFinance</p>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">SolarCredit</p>
           <p className="text-sm font-bold text-white mt-0.5">Admin Panel</p>
         </div>
 
