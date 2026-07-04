@@ -53,7 +53,7 @@ export default function DashboardPage() {
 
   if (authLoading || loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#f8fafc" }}>
-      <Spinner className="w-6 h-6" style={{ color: "#f5a623" } as any} />
+      <Spinner className="w-6 h-6 text-amber-500" />
     </div>
   );
 

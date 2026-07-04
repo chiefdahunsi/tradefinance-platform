@@ -404,7 +404,7 @@ export default function ApplicationDetailPage() {
                         <div className="flex items-center gap-2 mt-1">
                           <p className="text-xs text-slate-400 truncate max-w-[200px]">{uploaded.fileName}</p>
                           <DocumentLink documentId={uploaded.id} fileName={uploaded.fileName}
-                            className="text-xs font-medium hover:underline" style={{ color: "#f5a623" } as any} />
+                            className="text-xs font-medium hover:underline text-amber-500" />
                         </div>
                       )}
                     </div>
