@@ -126,7 +126,7 @@ export default function ApplyPage() {
                 </Field>
                 <Field label="Repayment Tenor *" error={fieldErrors.tenor}>
                   <select value={form.tenor} onChange={set("tenor")} className={input}>
-                    {[6,12,18,24,36,48,60,72,84].map((t) => (
+                    {[6,12,18,24,36].map((t) => (
                       <option key={t} value={t}>{t} months ({Math.round(t/12 * 10) / 10} yr{t >= 24 ? "s" : ""})</option>
                     ))}
                   </select>

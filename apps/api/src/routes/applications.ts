@@ -10,7 +10,7 @@ const router = Router();
 
 const applicationSchema = z.object({
   amountRequested: z.number().positive(),
-  tenor: z.number().int().min(1).max(84),
+  tenor: z.number().int().min(1).max(36),
   purpose: z.string().min(10),
   systemType: z.string(),
   systemSizeKwp: z.number().positive().optional(),

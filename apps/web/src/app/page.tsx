@@ -186,7 +186,7 @@ export default function HomePage() {
             </h1>
 
             <p className="hero-sub" style={{ fontSize: 18, color: "#94a3b8", lineHeight: 1.7, marginBottom: 40, maxWidth: 520 }}>
-              Finance your solar installation — commercial or residential — with up to ₦500M over 84 months. Apply in minutes, get a credit decision in 48 hours.
+              Finance your solar installation — commercial or residential — with up to ₦150M over 36 months. Apply in minutes, get a credit decision in 48 hours.
             </p>
 
             <div className="hero-ctas" style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
@@ -206,8 +206,8 @@ export default function HomePage() {
         <div className="stats-row stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {[
             { value: "48 hrs", label: "Credit Decision", sub: "From application to answer" },
-            { value: "84 mo", label: "Max Repayment Tenor", sub: "Spread costs comfortably" },
-            { value: "₦500M", label: "Max Facility Size", sub: "For large commercial installs" },
+            { value: "36 mo", label: "Max Repayment Tenor", sub: "Spread costs comfortably" },
+            { value: "₦150M", label: "Max Facility Size", sub: "For large commercial installs" },
           ].map(({ value, label, sub }) => (
             <div key={label} className="stat-card">
               <div className="display" style={{ fontSize: 36, fontWeight: 800, color: "#f5a623", letterSpacing: "-1px", marginBottom: 6 }}>{value}</div>
