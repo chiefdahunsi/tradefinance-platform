@@ -16,6 +16,13 @@ const applicationSchema = z.object({
   systemSizeKwp: z.number().positive().optional(),
   projectAddress: z.string().optional(),
   projectDescription: z.string().min(20),
+  appliances: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    wattage: z.number(),
+    quantity: z.number().int(),
+    hoursPerDay: z.number(),
+  })).optional(),
   collateralType: z.string().optional(),
   collateralValue: z.number().optional(),
   collateralDetails: z.string().optional(),

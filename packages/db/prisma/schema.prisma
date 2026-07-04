@@ -162,6 +162,7 @@ model LoanApplication {
   systemSizeKwp    Float?
   projectAddress   String?
   projectDescription String
+  appliances       Json?
 
   collateralType    String?
   collateralValue   Decimal? @db.Decimal(18, 2)
