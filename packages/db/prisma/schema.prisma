@@ -40,14 +40,14 @@ enum DocumentType {
   MEMART
   AUDITED_FINANCIALS
   BANK_STATEMENT
-  TRADE_CONTRACT
-  INVOICE
-  LETTER_OF_CREDIT
-  WAREHOUSE_RECEIPT
   DIRECTORS_ID
   UTILITY_BILL
   PROOF_OF_COLLATERAL
   PASSPORT_PHOTOGRAPH
+  ELECTRICITY_BILL
+  SITE_ASSESSMENT
+  PROPERTY_PROOF
+  INSTALLATION_QUOTE
   OTHER
 }
 
@@ -57,16 +57,13 @@ enum DocumentStatus {
   REJECTED
 }
 
-enum CommodityType {
-  COCOA
-  CASHEW
-  SESAME
-  SOYBEAN
-  PALM_OIL
-  GROUNDNUT
-  COTTON
-  GINGER
-  RUBBER
+enum SolarSystemType {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  AGRO_PROCESSING
+  HEALTHCARE
+  EDUCATION
   OTHER
 }
 
@@ -111,10 +108,9 @@ model Business {
   state    String
   website  String?
 
-  commodities      CommodityType[]
   yearsInOperation Int?
-  annualTurnover   Decimal?        @db.Decimal(18, 2)
-  exportMarkets    String[]
+  annualTurnover   Decimal?  @db.Decimal(18, 2)
+  monthlyEnergyBill Decimal? @db.Decimal(18, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -159,11 +155,13 @@ model LoanApplication {
 
   status ApplicationStatus @default(DRAFT)
 
-  amountRequested  Decimal       @db.Decimal(18, 2)
+  amountRequested  Decimal         @db.Decimal(18, 2)
   tenor            Int
   purpose          String
-  commodityType    CommodityType
-  tradeDescription String
+  systemType       SolarSystemType
+  systemSizeKwp    Float?
+  projectAddress   String?
+  projectDescription String
 
   collateralType    String?
   collateralValue   Decimal? @db.Decimal(18, 2)
@@ -234,7 +232,7 @@ model CreditProfile {
 
   kycScore          Int
   financialScore    Int
-  tradeHistoryScore Int
+  projectViabilityScore Int
   collateralScore   Int
   bureauScore       Int?
 

@@ -6,9 +6,14 @@ import { api } from "@/lib/api";
 import { Spinner } from "@/components/shared/spinner";
 import { parseApiError, parseFieldErrors } from "@/lib/errors";
 
-const COMMODITIES = [
-  "COCOA","CASHEW","SESAME","SOYBEAN","PALM_OIL",
-  "GROUNDNUT","COTTON","GINGER","RUBBER","OTHER",
+const SYSTEM_TYPES = [
+  { value: "RESIDENTIAL", label: "Residential", desc: "Home / apartment solar installation" },
+  { value: "COMMERCIAL", label: "Commercial", desc: "Office, retail, or mixed-use building" },
+  { value: "INDUSTRIAL", label: "Industrial", desc: "Factory, warehouse, or manufacturing plant" },
+  { value: "AGRO_PROCESSING", label: "Agro-Processing", desc: "Farm, processing mill, or cold storage" },
+  { value: "HEALTHCARE", label: "Healthcare", desc: "Clinic, hospital, or pharmacy" },
+  { value: "EDUCATION", label: "Education", desc: "School, university, or training centre" },
+  { value: "OTHER", label: "Other", desc: "Any other installation type" },
 ];
 
 export default function ApplyPage() {
@@ -16,15 +21,17 @@ export default function ApplyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
-  const invoiceRef = useRef<HTMLInputElement>(null);
+  const [quoteFile, setQuoteFile] = useState<File | null>(null);
+  const quoteRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     amountRequested: "",
-    tenor: "3",
+    tenor: "36",
     purpose: "",
-    commodityType: "COCOA",
-    tradeDescription: "",
+    systemType: "COMMERCIAL",
+    systemSizeKwp: "",
+    projectAddress: "",
+    projectDescription: "",
     collateralType: "",
     collateralValue: "",
     collateralDetails: "",
@@ -44,17 +51,16 @@ export default function ApplyPage() {
         ...form,
         amountRequested: parseFloat(form.amountRequested),
         tenor: parseInt(form.tenor),
+        systemSizeKwp: form.systemSizeKwp ? parseFloat(form.systemSizeKwp) : undefined,
         collateralValue: form.collateralValue ? parseFloat(form.collateralValue) : undefined,
       };
       const { data } = await api.post("/api/applications", payload);
       const applicationId = data.data.id;
 
-      // Upload invoice if provided
-      if (invoiceFile) {
+      if (quoteFile) {
         const formData = new FormData();
-        formData.append("file", invoiceFile);
-        formData.append("documentType", "INVOICE");
-        // Don't set Content-Type manually — axios sets it with the correct boundary for multipart
+        formData.append("file", quoteFile);
+        formData.append("documentType", "INSTALLATION_QUOTE");
         await api.post(`/api/documents/${applicationId}`, formData);
       }
 
@@ -70,24 +76,42 @@ export default function ApplyPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4">
-        <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600">
-          ←
-        </button>
+        <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600">←</button>
         <div>
-          <h1 className="text-lg font-bold text-slate-900">New Facility Application</h1>
-          <p className="text-slate-500 text-sm">Trade finance facility request</p>
+          <h1 className="text-lg font-bold text-slate-900">New Solar Finance Application</h1>
+          <p className="text-slate-500 text-sm">Finance your solar installation</p>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-6 py-10">
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-            {error}
-          </div>
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">{error}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Facility details */}
+          {/* System Type */}
+          <section className="bg-white rounded-xl border border-slate-200 p-6">
+            <h2 className="font-semibold text-slate-900 mb-5">Installation Type</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {SYSTEM_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, systemType: t.value }))}
+                  className={`text-left p-4 rounded-xl border-2 transition-all ${
+                    form.systemType === t.value
+                      ? "border-green-500 bg-green-50"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <p className={`text-sm font-semibold ${form.systemType === t.value ? "text-green-800" : "text-slate-800"}`}>{t.label}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{t.desc}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Facility Details */}
           <section className="bg-white rounded-xl border border-slate-200 p-6">
             <h2 className="font-semibold text-slate-900 mb-5">Facility Details</h2>
             <div className="space-y-4">
@@ -100,74 +124,77 @@ export default function ApplyPage() {
                     placeholder="5,000,000"
                   />
                 </Field>
-                <Field label="Tenor (months) *" error={fieldErrors.tenor}>
+                <Field label="Repayment Tenor *" error={fieldErrors.tenor}>
                   <select value={form.tenor} onChange={set("tenor")} className={input}>
-                    {[1,2,3,4,5,6,9,12,18,24].map((t) => (
-                      <option key={t} value={t}>{t} {t === 1 ? "month" : "months"}</option>
+                    {[6,12,18,24,36,48,60,72,84].map((t) => (
+                      <option key={t} value={t}>{t} months ({Math.round(t/12 * 10) / 10} yr{t >= 24 ? "s" : ""})</option>
                     ))}
                   </select>
                 </Field>
               </div>
-              <Field label="Commodity Type *" error={fieldErrors.commodityType}>
-                <select value={form.commodityType} onChange={set("commodityType")} className={input}>
-                  {COMMODITIES.map((c) => (
-                    <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
-                  ))}
-                </select>
-              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="System Size (kWp)" hint="Estimated peak capacity in kilowatts">
+                  <input
+                    type="number" min="0.5" step="0.5"
+                    value={form.systemSizeKwp} onChange={set("systemSizeKwp")}
+                    className={input} placeholder="e.g. 20"
+                  />
+                </Field>
+                <Field label="Installation Address">
+                  <input
+                    value={form.projectAddress} onChange={set("projectAddress")}
+                    className={input} placeholder="Where the panels will be installed"
+                  />
+                </Field>
+              </div>
               <Field label="Purpose of Facility *" error={fieldErrors.purpose}>
                 <input
-                  required value={form.purpose} onChange={(e) => { set("purpose")(e); setFieldErrors(f => ({ ...f, purpose: "" })); }}
+                  required value={form.purpose}
+                  onChange={(e) => { set("purpose")(e); setFieldErrors((f) => ({ ...f, purpose: "" })); }}
                   className={fieldErrors.purpose ? inputError : input}
-                  placeholder="e.g. Purchase of 200MT cocoa beans for export"
+                  placeholder="e.g. Solar installation to eliminate NEPA dependency and reduce energy costs"
                 />
               </Field>
-              <Field label="Trade Description *" hint="Describe the trade cycle — what you're buying, from whom, selling to whom, and expected timeline" error={fieldErrors.tradeDescription}>
+              <Field
+                label="Project Description *"
+                hint="Describe the project — current energy situation, proposed system, expected savings, and installer details"
+                error={fieldErrors.projectDescription}
+              >
                 <textarea
-                  required rows={4} value={form.tradeDescription}
-                  onChange={(e) => { set("tradeDescription")(e); setFieldErrors(f => ({ ...f, tradeDescription: "" })); }}
-                  className={`${fieldErrors.tradeDescription ? inputError : input} resize-none`}
-                  placeholder="We purchase cocoa beans from aggregators in Ondo State and export to buyers in Amsterdam under a confirmed LC. Trade cycle is 60–90 days."
+                  required rows={4} value={form.projectDescription}
+                  onChange={(e) => { set("projectDescription")(e); setFieldErrors((f) => ({ ...f, projectDescription: "" })); }}
+                  className={`${fieldErrors.projectDescription ? inputError : input} resize-none`}
+                  placeholder="We currently spend ₦800,000/month on diesel generators. A 50 kWp solar system with 100 kWh battery backup will eliminate generator costs within 18 months. Installation by SolarMax Nigeria Ltd."
                 />
               </Field>
             </div>
           </section>
 
-          {/* Invoice Upload */}
+          {/* Installer Quote Upload */}
           <section className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="font-semibold text-slate-900 mb-1">Commercial Invoice</h2>
+            <h2 className="font-semibold text-slate-900 mb-1">Installer Quotation</h2>
             <p className="text-slate-500 text-sm mb-5">
-              Optional — upload now or later from the application page. PDF, JPG or PNG · Max 10MB.
+              Optional — upload now or later. PDF, JPG or PNG · Max 10MB.
             </p>
-            <input
-              ref={invoiceRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="hidden"
-              onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)}
-            />
-            {invoiceFile ? (
+            <input ref={quoteRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+              onChange={(e) => setQuoteFile(e.target.files?.[0] ?? null)} />
+            {quoteFile ? (
               <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
                 <div className="flex items-center gap-2 text-sm text-green-800">
                   <span>📄</span>
-                  <span className="font-medium">{invoiceFile.name}</span>
-                  <span className="text-green-600">({(invoiceFile.size / 1024).toFixed(0)} KB)</span>
+                  <span className="font-medium">{quoteFile.name}</span>
+                  <span className="text-green-600">({(quoteFile.size / 1024).toFixed(0)} KB)</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { setInvoiceFile(null); if (invoiceRef.current) invoiceRef.current.value = ""; }}
-                  className="text-green-600 hover:text-red-500 text-sm font-medium"
-                >
+                <button type="button"
+                  onClick={() => { setQuoteFile(null); if (quoteRef.current) quoteRef.current.value = ""; }}
+                  className="text-green-600 hover:text-red-500 text-sm font-medium">
                   Remove
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => invoiceRef.current?.click()}
-                className="w-full border-2 border-dashed border-slate-200 hover:border-green-400 rounded-lg py-6 text-sm text-slate-400 hover:text-green-600 transition-colors"
-              >
-                Click to upload invoice
+              <button type="button" onClick={() => quoteRef.current?.click()}
+                className="w-full border-2 border-dashed border-slate-200 hover:border-green-400 rounded-lg py-6 text-sm text-slate-400 hover:text-green-600 transition-colors">
+                Click to upload installer quotation
               </button>
             )}
           </section>
@@ -175,33 +202,29 @@ export default function ApplyPage() {
           {/* Collateral */}
           <section className="bg-white rounded-xl border border-slate-200 p-6">
             <h2 className="font-semibold text-slate-900 mb-1">Collateral</h2>
-            <p className="text-slate-500 text-sm mb-5">Optional but improves your credit score significantly</p>
+            <p className="text-slate-500 text-sm mb-5">Optional but significantly improves your credit score</p>
             <div className="space-y-4">
               <Field label="Collateral Type">
                 <select value={form.collateralType} onChange={set("collateralType")} className={input}>
                   <option value="">None / Not applicable</option>
                   <option>Real Estate</option>
-                  <option>Warehouse Receipt</option>
-                  <option>Letter of Credit</option>
+                  <option>Domiciliation of Sales</option>
                   <option>Equipment</option>
                   <option>Stock / Inventory</option>
-                  <option>Domiciliation of Sales</option>
+                  <option>Letter of Credit</option>
+                  <option>Other</option>
                 </select>
               </Field>
               {form.collateralType && (
                 <>
                   <Field label="Estimated Value (₦)">
-                    <input
-                      type="number" min="0" value={form.collateralValue} onChange={set("collateralValue")}
-                      className={input} placeholder="10,000,000"
-                    />
+                    <input type="number" min="0" value={form.collateralValue} onChange={set("collateralValue")}
+                      className={input} placeholder="10,000,000" />
                   </Field>
                   <Field label="Collateral Details">
-                    <textarea
-                      rows={3} value={form.collateralDetails} onChange={set("collateralDetails")}
+                    <textarea rows={3} value={form.collateralDetails} onChange={set("collateralDetails")}
                       className={`${input} resize-none`}
-                      placeholder="Describe the collateral — location, condition, ownership details"
-                    />
+                      placeholder="Describe the collateral — location, condition, ownership details" />
                   </Field>
                 </>
               )}

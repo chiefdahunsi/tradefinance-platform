@@ -10,7 +10,7 @@ type ApplicationWithRelations = LoanApplication & {
 export async function generateCreditProfile(app: ApplicationWithRelations) {
   const kycScore = scoreKYC(app);
   const financialScore = scoreFinancials(app);
-  const tradeHistoryScore = scoreTradeHistory(app);
+  const projectViabilityScore = scoreProjectViability(app);
   const collateralScore = scoreCollateral(app);
 
   // ── Bureau lookup (FirstCentral) ──────────────────────────────────────────
@@ -42,22 +42,21 @@ export async function generateCreditProfile(app: ApplicationWithRelations) {
   }
 
   // ── Weighted total ────────────────────────────────────────────────────────
-  // When bureau score is available we include it as a 5th factor (20% weight).
   let totalScore: number;
   if (bureauScore !== null) {
     totalScore = Math.round(
-      kycScore          * 0.25 +
-      financialScore    * 0.25 +
-      tradeHistoryScore * 0.20 +
-      collateralScore   * 0.10 +
-      bureauScore       * 0.20
+      kycScore               * 0.25 +
+      financialScore         * 0.25 +
+      projectViabilityScore  * 0.20 +
+      collateralScore        * 0.10 +
+      bureauScore            * 0.20
     );
   } else {
     totalScore = Math.round(
-      kycScore          * 0.30 +
-      financialScore    * 0.30 +
-      tradeHistoryScore * 0.25 +
-      collateralScore   * 0.15
+      kycScore               * 0.30 +
+      financialScore         * 0.30 +
+      projectViabilityScore  * 0.25 +
+      collateralScore        * 0.15
     );
   }
 
@@ -72,22 +71,25 @@ export async function generateCreditProfile(app: ApplicationWithRelations) {
   if (financialScore >= 70) strengths.push("Strong financial documentation");
   if (app.business.yearsInOperation && app.business.yearsInOperation >= 3)
     strengths.push(`${app.business.yearsInOperation} years in operation`);
+  if ((app as any).systemSizeKwp) strengths.push(`${(app as any).systemSizeKwp} kWp system specified`);
   if (bureauScore !== null && bureauScore >= 65)
     strengths.push(`Clean bureau history (FirstCentral: ${bureauRating})`);
 
   if (kycScore < 60) risks.push("Incomplete or failed KYC verification");
   if (financialScore < 50) risks.push("Insufficient financial documentation");
   if (!app.collateralType) risks.push("No collateral provided");
-  if (app.business.directors.length < 1) risks.push("No director information provided");
+  if (app.business.directors.length < 1) risks.push("No director / guarantor information provided");
   if (bureauScore !== null && bureauScore < 40)
     risks.push(`Adverse bureau record detected (FirstCentral: ${bureauRating})`);
   if (IS_FIRSTCENTRAL_CONFIGURED && bureauScore === null)
-    risks.push("Bureau lookup returned no credit history for directors");
+    risks.push("Bureau lookup returned no credit history");
 
   if (recommendation === "APPROVE" && !app.collateralType)
     conditions.push("Provide acceptable collateral before disbursement");
   if (financialScore < 70)
     conditions.push("Provide additional financial statements");
+  if (!app.documents.some((d) => d.type === "ELECTRICITY_BILL"))
+    conditions.push("Submit recent electricity bill to validate energy consumption");
 
   const summary = buildSummary(app, totalScore, recommendation, bureauScore, bureauRating);
 
@@ -97,7 +99,7 @@ export async function generateCreditProfile(app: ApplicationWithRelations) {
     recommendation,
     kycScore,
     financialScore,
-    tradeHistoryScore,
+    projectViabilityScore,
     collateralScore,
     bureauScore,
     bureauProvider,
@@ -117,14 +119,9 @@ function scoreKYC(app: ApplicationWithRelations): number {
   const cacCheck = kycChecks.find((k) => k.checkType === "CAC");
   if (cacCheck?.status === "PASSED") score += 40;
 
-  const passedBVNs = business.directors.filter(
-    (d) => d.kycStatus === "PASSED"
-  ).length;
+  const passedBVNs = business.directors.filter((d) => d.kycStatus === "PASSED").length;
   const totalDirectors = business.directors.length;
-
-  if (totalDirectors > 0) {
-    score += Math.round((passedBVNs / totalDirectors) * 60);
-  }
+  if (totalDirectors > 0) score += Math.round((passedBVNs / totalDirectors) * 60);
 
   return Math.min(score, 100);
 }
@@ -135,25 +132,37 @@ function scoreFinancials(app: ApplicationWithRelations): number {
 
   if (docTypes.includes("AUDITED_FINANCIALS")) score += 40;
   if (docTypes.includes("BANK_STATEMENT")) score += 30;
-  if (docTypes.includes("TRADE_CONTRACT")) score += 20;
-  if (docTypes.includes("INVOICE")) score += 10;
+  if (docTypes.includes("INSTALLATION_QUOTE")) score += 20;
+  if (docTypes.includes("ELECTRICITY_BILL")) score += 10;
 
   return Math.min(score, 100);
 }
 
-function scoreTradeHistory(app: ApplicationWithRelations): number {
+function scoreProjectViability(app: ApplicationWithRelations): number {
   let score = 0;
   const { business } = app;
+  const docTypes = app.documents.map((d) => d.type);
 
+  // Years in operation — longer track record = more reliable repayment
   if (business.yearsInOperation) {
-    if (business.yearsInOperation >= 5) score += 40;
-    else if (business.yearsInOperation >= 3) score += 25;
+    if (business.yearsInOperation >= 5) score += 35;
+    else if (business.yearsInOperation >= 3) score += 22;
     else if (business.yearsInOperation >= 1) score += 10;
   }
 
-  if (business.exportMarkets && business.exportMarkets.length > 0) score += 20;
-  if (business.commodities && business.commodities.length > 0) score += 20;
-  if (app.documents.some((d) => d.type === "LETTER_OF_CREDIT")) score += 20;
+  // Monthly energy bill — high bill = strong motivation + repayment capacity via savings
+  if (business.monthlyEnergyBill) {
+    const bill = Number(business.monthlyEnergyBill);
+    if (bill >= 500000) score += 30;
+    else if (bill >= 200000) score += 20;
+    else if (bill >= 50000) score += 10;
+  }
+
+  // Site assessment report submitted
+  if (docTypes.includes("SITE_ASSESSMENT")) score += 20;
+
+  // Property proof (confirms installation is possible)
+  if (docTypes.includes("PROPERTY_PROOF")) score += 15;
 
   return Math.min(score, 100);
 }
@@ -161,7 +170,7 @@ function scoreTradeHistory(app: ApplicationWithRelations): number {
 function scoreCollateral(app: ApplicationWithRelations): number {
   if (!app.collateralType) return 0;
 
-  let score = 50; // base for having collateral
+  let score = 50;
 
   if (app.collateralValue && Number(app.amountRequested) > 0) {
     const ltv = Number(app.collateralValue) / Number(app.amountRequested);
@@ -194,18 +203,18 @@ function buildSummary(
     currency: "NGN",
     maximumFractionDigits: 0,
   });
+  const systemType = (app as any).systemType?.replace(/_/g, " ") ?? "Solar";
+  const sizeStr = (app as any).systemSizeKwp ? ` (${(app as any).systemSizeKwp} kWp)` : "";
 
   const bureauLine = bureauScore !== null && bureauScore !== undefined
     ? ` FirstCentral bureau check returned a normalised score of ${bureauScore}/100 (${bureauRating}).`
     : "";
 
   return (
-    `${business.registeredName} (RC: ${business.cacNumber}) is requesting a ` +
-    `${app.tenor}-month trade finance facility of ${amount} for ${app.commodityType.toLowerCase()} ` +
-    `commodity trading. The business has been in operation for ` +
-    `${business.yearsInOperation ?? "an unknown number of"} years.` +
+    `${business.registeredName} is requesting a ${app.tenor}-month solar finance facility of ${amount} ` +
+    `for a ${systemType}${sizeStr} solar installation. ` +
+    `The business has been in operation for ${business.yearsInOperation ?? "an unknown number of"} years.` +
     bureauLine +
-    ` Credit score: ${score}/100 (Grade ${getGrade(score)}). ` +
-    `Recommendation: ${recommendation}.`
+    ` Credit score: ${score}/100 (Grade ${getGrade(score)}). Recommendation: ${recommendation}.`
   );
 }

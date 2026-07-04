@@ -13,7 +13,7 @@ interface Application {
   referenceNumber: string;
   status: string;
   amountRequested: number;
-  commodityType: string;
+  systemType: string;
   tenor: number;
   createdAt: string;
   creditProfile?: { totalScore: number; scoreGrade: string };
@@ -60,7 +60,7 @@ export default function DashboardPage() {
           <h1 className="text-lg font-bold text-slate-900">
             Welcome, {user?.firstName}
           </h1>
-          <p className="text-slate-500 text-sm">Trade Finance Dashboard</p>
+          <p className="text-slate-500 text-sm">Solar Finance Dashboard</p>
         </div>
         <div className="flex items-center gap-3">
           {hasBusiness && (
@@ -140,7 +140,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <p className="text-slate-800 font-medium">
-                      {app.commodityType.replace(/_/g, " ")} —{" "}
+                      {app.systemType.replace(/_/g, " ")} Solar —{" "}
                       ₦{Number(app.amountRequested).toLocaleString()} · {app.tenor} months
                     </p>
                     <p className="text-xs text-slate-400 mt-1">

@@ -17,10 +17,9 @@ const businessSchema = z.object({
   city: z.string(),
   state: z.string(),
   website: z.string().url().optional().or(z.literal("")),
-  commodities: z.array(z.string()),
   yearsInOperation: z.number().int().optional(),
   annualTurnover: z.number().optional(),
-  exportMarkets: z.array(z.string()).optional(),
+  monthlyEnergyBill: z.number().optional(),
 });
 
 const directorSchema = z.object({

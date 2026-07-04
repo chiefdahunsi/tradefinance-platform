@@ -8,19 +8,19 @@ import { DocumentLink } from "@/components/shared/document-link";
 import { parseApiError } from "@/lib/errors";
 
 const DOCUMENT_TYPES = [
-  { value: "CAC_CERTIFICATE", label: "CAC Certificate", required: true, hint: "Certificate of Incorporation issued by CAC" },
-  { value: "CAC_STATUS_REPORT", label: "CAC Status Report", required: true, hint: "Current status report showing company is active" },
-  { value: "MEMART", label: "MEMART / Articles of Association", required: true, hint: "Memorandum and Articles of Association — required for all registered companies" },
+  { value: "CAC_CERTIFICATE", label: "CAC Certificate", required: true, hint: "Certificate of Incorporation issued by CAC (for registered businesses)" },
+  { value: "CAC_STATUS_REPORT", label: "CAC Status Report", required: true, hint: "Current status report from CAC showing the company is active" },
+  { value: "MEMART", label: "MEMART / Articles of Association", required: true, hint: "Memorandum and Articles of Association — required for all limited liability companies" },
   { value: "AUDITED_FINANCIALS", label: "Audited Financial Statements (Last 3 Years)", required: true, hint: "Audited accounts for the last 3 financial years, signed by a registered auditor" },
-  { value: "BANK_STATEMENT", label: "Bank Statement (Last 12 Months)", required: true, hint: "Full 12-month bank statement for your primary business account, stamped by the bank" },
-  { value: "TRADE_CONTRACT", label: "Trade Contract / Purchase Order", required: true, hint: "Signed contract or PO with your buyer or supplier for the trade being financed" },
-  { value: "INVOICE", label: "Commercial Invoice", required: false, hint: "Invoice for goods being purchased or sold under this facility" },
-  { value: "LETTER_OF_CREDIT", label: "Letter of Credit / SBLC", required: false, hint: "If applicable — confirmed LC or Standby LC from buyer's bank" },
-  { value: "WAREHOUSE_RECEIPT", label: "Warehouse Receipt", required: false, hint: "If using warehouse stock as collateral — receipt from a licensed warehouse operator" },
-  { value: "DIRECTORS_ID", label: "Directors' ID (Passport/NIN Slip)", required: true, hint: "Valid government-issued ID for each director listed in the application" },
-  { value: "PASSPORT_PHOTOGRAPH", label: "Passport Photograph", required: true, hint: "Recent passport-sized photograph of each director — white background, clear face, taken within the last 6 months" },
-  { value: "UTILITY_BILL", label: "Utility Bill (Address Proof)", required: true, hint: "Recent utility bill (electricity, water, or waste) not older than 3 months, matching your registered business address" },
-  { value: "PROOF_OF_COLLATERAL", label: "Proof of Collateral", required: false, hint: "Supporting documents for the collateral offered — e.g. land title / C of O for real estate; warehouse receipt for stock; domiciliation letter for sales proceeds; equipment valuation report; or copy of LC/SBLC" },
+  { value: "BANK_STATEMENT", label: "Bank Statement (Last 12 Months)", required: true, hint: "Full 12-month statement for your primary account, stamped by the bank" },
+  { value: "ELECTRICITY_BILL", label: "Recent Electricity / Generator Bill", required: true, hint: "Last 3 months of DISCO electricity bills or diesel invoices — demonstrates your current energy spend" },
+  { value: "INSTALLATION_QUOTE", label: "Installer Quotation", required: true, hint: "Formal quote from a certified solar installer — must include system size, equipment specs, and total cost" },
+  { value: "SITE_ASSESSMENT", label: "Site Assessment Report", required: false, hint: "Technical assessment of the installation site by an engineer or the solar company" },
+  { value: "PROPERTY_PROOF", label: "Proof of Property Ownership / Tenancy", required: true, hint: "Certificate of Occupancy, deed of assignment, or tenancy agreement for the installation site" },
+  { value: "DIRECTORS_ID", label: "Directors' / Guarantors' ID", required: true, hint: "Valid government-issued ID (international passport, NIN slip, or driver's licence) for each director or guarantor" },
+  { value: "PASSPORT_PHOTOGRAPH", label: "Passport Photograph", required: true, hint: "Recent passport-sized photograph of each director — white background, taken within the last 6 months" },
+  { value: "UTILITY_BILL", label: "Utility Bill (Address Proof)", required: true, hint: "Recent utility bill not older than 3 months, matching your registered business address" },
+  { value: "PROOF_OF_COLLATERAL", label: "Proof of Collateral", required: false, hint: "Supporting documents for any collateral offered — e.g. land title / C of O for real estate, domiciliation letter, or equipment valuation report" },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -41,9 +41,11 @@ interface Application {
   status: string;
   amountRequested: number;
   tenor: number;
-  commodityType: string;
+  systemType: string;
+  systemSizeKwp?: number;
+  projectAddress?: string;
   purpose: string;
-  tradeDescription: string;
+  projectDescription: string;
   collateralType?: string;
   collateralValue?: number;
   submittedAt?: string;
@@ -173,7 +175,7 @@ export default function ApplicationDetailPage() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-bold text-slate-900">
-              {app.commodityType.replace(/_/g, " ")} Facility
+              {app.systemType.replace(/_/g, " ")} Solar Finance
             </h1>
             <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[app.status] ?? "bg-slate-100 text-slate-600"}`}>
               {app.status.replace(/_/g, " ")}
@@ -211,12 +213,18 @@ export default function ApplicationDetailPage() {
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <Stat label="Amount" value={`₦${Number(app.amountRequested).toLocaleString()}`} />
             <Stat label="Tenor" value={`${app.tenor} months`} />
-            <Stat label="Commodity" value={app.commodityType.replace(/_/g, " ")} />
+            <Stat label="System Type" value={app.systemType.replace(/_/g, " ")} />
+            {app.systemSizeKwp && <Stat label="System Size" value={`${app.systemSizeKwp} kWp`} />}
+            {app.projectAddress && <Stat label="Installation Address" value={app.projectAddress} />}
             <Stat label="Collateral" value={app.collateralType || "None"} />
           </dl>
           <div className="mt-4 pt-4 border-t border-slate-100">
             <p className="text-xs text-slate-500 font-medium mb-1">Purpose</p>
             <p className="text-sm text-slate-700">{app.purpose}</p>
+          </div>
+          <div className="mt-3">
+            <p className="text-xs text-slate-500 font-medium mb-1">Project Description</p>
+            <p className="text-sm text-slate-700">{app.projectDescription}</p>
           </div>
         </section>
 

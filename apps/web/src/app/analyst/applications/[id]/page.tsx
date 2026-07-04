@@ -14,9 +14,11 @@ interface FullApplication {
   status: string;
   amountRequested: number;
   tenor: number;
-  commodityType: string;
+  systemType: string;
+  systemSizeKwp?: number;
+  projectAddress?: string;
   purpose: string;
-  tradeDescription: string;
+  projectDescription: string;
   collateralType?: string;
   collateralValue?: number;
   collateralDetails?: string;
@@ -71,7 +73,7 @@ interface FullApplication {
     recommendation: string;
     kycScore: number;
     financialScore: number;
-    tradeHistoryScore: number;
+    projectViabilityScore: number;
     collateralScore: number;
     bureauScore: number | null;
     bureauProvider: string | null;
@@ -276,7 +278,7 @@ export default function AnalystApplicationPage() {
             </button>
             <h1 className="text-xl font-bold text-slate-900">{app.business.registeredName}</h1>
             <p className="text-slate-500 text-sm mt-0.5">
-              {app.commodityType.replace(/_/g, " ")} · ₦{Number(app.amountRequested).toLocaleString()} · {app.tenor} months ·{" "}
+              {app.systemType.replace(/_/g, " ")} Solar · ₦{Number(app.amountRequested).toLocaleString()} · {app.tenor} months ·{" "}
               <span className="font-mono">{app.referenceNumber.slice(0, 8).toUpperCase()}</span>
             </p>
           </div>
@@ -330,7 +332,7 @@ export default function AnalystApplicationPage() {
               {[
                 { label: "KYC", score: app.creditProfile.kycScore },
                 { label: "Financial", score: app.creditProfile.financialScore },
-                { label: "Trade History", score: app.creditProfile.tradeHistoryScore },
+                { label: "Project Viability", score: app.creditProfile.projectViabilityScore },
                 { label: "Collateral", score: app.creditProfile.collateralScore },
               ].map(({ label, score }) => (
                 <div key={label}>
@@ -466,7 +468,9 @@ export default function AnalystApplicationPage() {
               <dl className="grid grid-cols-3 gap-4 text-sm mb-4">
                 <Stat label="Amount Requested" value={`₦${Number(app.amountRequested).toLocaleString()}`} />
                 <Stat label="Tenor" value={`${app.tenor} months`} />
-                <Stat label="Commodity" value={app.commodityType.replace(/_/g, " ")} />
+                <Stat label="System Type" value={app.systemType.replace(/_/g, " ")} />
+                {app.systemSizeKwp && <Stat label="System Size" value={`${app.systemSizeKwp} kWp`} />}
+                {app.projectAddress && <Stat label="Installation Address" value={app.projectAddress} />}
                 <Stat label="Collateral Type" value={app.collateralType || "None"} />
                 <Stat label="Collateral Value" value={app.collateralValue ? `₦${Number(app.collateralValue).toLocaleString()}` : "—"} />
               </dl>
@@ -475,8 +479,8 @@ export default function AnalystApplicationPage() {
                 <p className="text-sm text-slate-700">{app.purpose}</p>
               </div>
               <div className="pt-3 mt-3 border-t border-slate-100">
-                <p className="text-xs text-slate-500 font-medium mb-1">Trade Description</p>
-                <p className="text-sm text-slate-700 leading-relaxed">{app.tradeDescription}</p>
+                <p className="text-xs text-slate-500 font-medium mb-1">Project Description</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{app.projectDescription}</p>
               </div>
             </Section>
 

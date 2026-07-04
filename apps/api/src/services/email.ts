@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.EMAIL_FROM || "TradeFinance <onboarding@resend.dev>";
+const FROM = process.env.EMAIL_FROM || "Solar Finance <onboarding@resend.dev>";
 const IS_CONFIGURED = !!process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== "";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -21,7 +21,7 @@ function baseTemplate(title: string, body: string) {
         <!-- Header -->
         <tr>
           <td style="background:#0f172a;padding:24px 32px;">
-            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#64748b;">TradeFinance</p>
+            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#64748b;">Solar Finance</p>
             <p style="margin:4px 0 0;font-size:18px;font-weight:700;color:#ffffff;">${title}</p>
           </td>
         </tr>
@@ -35,7 +35,7 @@ function baseTemplate(title: string, body: string) {
         <tr>
           <td style="padding:20px 32px;border-top:1px solid #f1f5f9;background:#f8fafc;">
             <p style="margin:0;font-size:12px;color:#94a3b8;">
-              This is an automated message from TradeFinance. Please do not reply to this email.
+              This is an automated message from Solar Finance. Please do not reply to this email.
             </p>
           </td>
         </tr>
@@ -82,19 +82,19 @@ export async function sendApplicationSubmitted(opts: {
   referenceNumber: string;
   amountRequested: number;
   tenor: number;
-  commodityType: string;
+  systemType: string;
 }) {
   const ref = opts.referenceNumber.slice(0, 8).toUpperCase();
   const body = `
     <p style="margin:0 0 16px;font-size:15px;color:#0f172a;">Dear <strong>${opts.firstName}</strong>,</p>
     <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
-      Your facility application has been received and is currently undergoing KYC verification.
+      Your solar finance application has been received and is currently undergoing KYC verification.
       You will be notified once the review process begins.
     </p>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
       ${infoRow("Reference", ref)}
-      ${infoRow("Business", opts.businessName)}
-      ${infoRow("Commodity", opts.commodityType.replace(/_/g, " "))}
+      ${infoRow("Business / Applicant", opts.businessName)}
+      ${infoRow("System Type", opts.systemType.replace(/_/g, " "))}
       ${infoRow("Amount Requested", `₦${Number(opts.amountRequested).toLocaleString()}`)}
       ${infoRow("Tenor", `${opts.tenor} months`)}
     </table>
@@ -104,7 +104,7 @@ export async function sendApplicationSubmitted(opts: {
   `;
   await send(
     opts.to,
-    `Application Received — ${ref}`,
+    `Solar Finance Application Received — ${ref}`,
     baseTemplate("Application Received", body)
   );
 }

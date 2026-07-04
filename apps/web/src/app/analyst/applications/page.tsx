@@ -11,7 +11,7 @@ interface Application {
   referenceNumber: string;
   status: string;
   amountRequested: number;
-  commodityType: string;
+  systemType: string;
   tenor: number;
   submittedAt: string;
   business: { registeredName: string; cacNumber: string; state: string };
@@ -106,7 +106,7 @@ export default function AllApplicationsPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  {["Business", "Commodity", "Amount", "Tenor", "Status", "Score", ""].map((h) => (
+                  {["Business", "System Type", "Amount", "Tenor", "Status", "Score", ""].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -118,7 +118,7 @@ export default function AllApplicationsPage() {
                       <p className="font-medium text-slate-900">{app.business.registeredName}</p>
                       <p className="text-xs text-slate-400 font-mono">{app.referenceNumber.slice(0, 8).toUpperCase()}</p>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{app.commodityType.replace(/_/g, " ")}</td>
+                    <td className="px-4 py-3 text-slate-600">{app.systemType.replace(/_/g, " ")}</td>
                     <td className="px-4 py-3 text-slate-700 font-medium">₦{Number(app.amountRequested).toLocaleString()}</td>
                     <td className="px-4 py-3 text-slate-600">{app.tenor}m</td>
                     <td className="px-4 py-3">

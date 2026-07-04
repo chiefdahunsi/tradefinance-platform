@@ -10,10 +10,12 @@ const router = Router();
 
 const applicationSchema = z.object({
   amountRequested: z.number().positive(),
-  tenor: z.number().int().min(1).max(24),
+  tenor: z.number().int().min(1).max(84),
   purpose: z.string().min(10),
-  commodityType: z.string(),
-  tradeDescription: z.string().min(20),
+  systemType: z.string(),
+  systemSizeKwp: z.number().positive().optional(),
+  projectAddress: z.string().optional(),
+  projectDescription: z.string().min(20),
   collateralType: z.string().optional(),
   collateralValue: z.number().optional(),
   collateralDetails: z.string().optional(),
@@ -40,7 +42,7 @@ router.post("/", async (req: AuthRequest, res: Response) => {
   }
 
   const application = await prisma.loanApplication.create({
-    data: { ...parsed.data, businessId: business.id, commodityType: parsed.data.commodityType as any },
+    data: { ...parsed.data, businessId: business.id, systemType: parsed.data.systemType as any },
   });
 
   return res.status(201).json({ success: true, data: application });
@@ -89,7 +91,7 @@ router.post("/:id/submit", async (req: AuthRequest, res: Response) => {
       referenceNumber: fullApp.referenceNumber,
       amountRequested: Number(fullApp.amountRequested),
       tenor: fullApp.tenor,
-      commodityType: fullApp.commodityType,
+      systemType: fullApp.systemType,
     }).catch((err) => console.error("Email error:", err));
   }
 

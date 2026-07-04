@@ -14,10 +14,6 @@ const NIGERIAN_STATES = [
   "Yobe","Zamfara",
 ];
 
-const COMMODITIES = [
-  "COCOA","CASHEW","SESAME","SOYBEAN","PALM_OIL","GROUNDNUT","COTTON","GINGER","RUBBER","OTHER",
-];
-
 interface Business {
   id: string;
   registeredName: string;
@@ -31,10 +27,9 @@ interface Business {
   city: string;
   state: string;
   website?: string;
-  commodities: string[];
   yearsInOperation?: number;
   annualTurnover?: number;
-  exportMarkets?: string[];
+  monthlyEnergyBill?: number;
 }
 
 export default function ProfilePage() {
@@ -53,10 +48,9 @@ export default function ProfilePage() {
     city: "",
     state: "Lagos",
     website: "",
-    commodities: [] as string[],
     yearsInOperation: "",
     annualTurnover: "",
-    exportMarkets: "",
+    monthlyEnergyBill: "",
   });
 
   useEffect(() => {
@@ -71,10 +65,9 @@ export default function ProfilePage() {
           city: b.city || "",
           state: b.state || "Lagos",
           website: b.website || "",
-          commodities: b.commodities || [],
           yearsInOperation: b.yearsInOperation?.toString() || "",
           annualTurnover: b.annualTurnover?.toString() || "",
-          exportMarkets: b.exportMarkets?.join(", ") || "",
+          monthlyEnergyBill: b.monthlyEnergyBill?.toString() || "",
         });
       })
       .catch(() => setError("Could not load business profile."))
@@ -85,31 +78,21 @@ export default function ProfilePage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  const toggleCommodity = (c: string) =>
-    setForm((f) => ({
-      ...f,
-      commodities: f.commodities.includes(c)
-        ? f.commodities.filter((x) => x !== c)
-        : [...f.commodities, c],
-    }));
-
   const handleSave = async () => {
     setSaving(true);
     setError("");
     setSuccess("");
     try {
       const payload = {
-        // Read-only fields passed through unchanged
         registeredName: business!.registeredName,
         cacNumber: business!.cacNumber,
         businessType: business!.businessType,
         sector: business!.sector,
         dateIncorporated: business!.dateIncorporated,
-        // Editable fields
         ...form,
         yearsInOperation: form.yearsInOperation ? parseInt(form.yearsInOperation) : undefined,
         annualTurnover: form.annualTurnover ? parseFloat(form.annualTurnover) : undefined,
-        exportMarkets: form.exportMarkets ? form.exportMarkets.split(",").map((s) => s.trim()).filter(Boolean) : [],
+        monthlyEnergyBill: form.monthlyEnergyBill ? parseFloat(form.monthlyEnergyBill) : undefined,
       };
       const { data } = await api.post("/api/business", payload);
       setBusiness(data.data);
@@ -147,8 +130,8 @@ export default function ProfilePage() {
 
         {/* Read-only: Registration Details */}
         <section className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Registration Details</h2>
-          <p className="text-xs text-slate-400 mb-4">These fields are locked and can only be changed by contacting support.</p>
+          <h2 className="font-semibold text-slate-900 mb-1">Registration Details</h2>
+          <p className="text-xs text-slate-400 mb-4">These fields are locked. Contact support to make changes.</p>
           <div className="grid grid-cols-2 gap-4">
             <ReadField label="Registered Name" value={business?.registeredName} />
             <ReadField label="CAC Number" value={business?.cacNumber} />
@@ -160,15 +143,15 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* Editable: Contact & Trade Info */}
+        {/* Editable: Contact Info */}
         <section className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Contact & Trade Information</h2>
+          <h2 className="font-semibold text-slate-900 mb-4">Contact Information</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <EditableField label="Trading Name" value={form.tradingName} editing={editing}>
+              <EditableField label="Trading Name" value={form.tradingName || "—"} editing={editing}>
                 <input value={form.tradingName} onChange={set("tradingName")} className={input} placeholder="If different from registered name" />
               </EditableField>
-              <EditableField label="Tax ID (TIN)" value={form.taxId} editing={editing}>
+              <EditableField label="Tax ID (TIN)" value={form.taxId || "—"} editing={editing}>
                 <input value={form.taxId} onChange={set("taxId")} className={input} placeholder="12345678-0001" />
               </EditableField>
             </div>
@@ -191,36 +174,10 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* Editable: Trade Profile */}
+        {/* Editable: Financial & Energy Profile */}
         <section className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Trade Profile</h2>
+          <h2 className="font-semibold text-slate-900 mb-4">Financial & Energy Profile</h2>
           <div className="space-y-4">
-            {/* Commodities */}
-            <div>
-              <p className="text-sm font-medium text-slate-700 mb-2">Commodities Traded</p>
-              {editing ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {COMMODITIES.map((c) => {
-                    const selected = form.commodities.includes(c);
-                    return (
-                      <button key={c} type="button" onClick={() => toggleCommodity(c)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border-2 transition-all text-left ${selected ? "bg-green-50 text-green-800 border-green-500" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}>
-                        <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selected ? "bg-green-500 border-green-500" : "border-slate-300"}`}>
-                          {selected && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                        </span>
-                        {c.replace(/_/g, " ")}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {(business?.commodities || []).map((c) => (
-                    <span key={c} className="text-xs bg-green-100 text-green-800 px-2.5 py-1 rounded-full font-medium">{c.replace(/_/g, " ")}</span>
-                  ))}
-                </div>
-              )}
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <EditableField label="Years in Operation" value={business?.yearsInOperation?.toString() || "—"} editing={editing}>
                 <input type="number" min="0" value={form.yearsInOperation} onChange={set("yearsInOperation")} className={input} placeholder="5" />
@@ -229,8 +186,8 @@ export default function ProfilePage() {
                 <input type="number" min="0" value={form.annualTurnover} onChange={set("annualTurnover")} className={input} placeholder="50000000" />
               </EditableField>
             </div>
-            <EditableField label="Export Markets" value={business?.exportMarkets?.join(", ") || "—"} editing={editing}>
-              <input value={form.exportMarkets} onChange={set("exportMarkets")} className={input} placeholder="EU, China, India" />
+            <EditableField label="Monthly Electricity / Generator Cost (₦)" value={business?.monthlyEnergyBill ? `₦${Number(business.monthlyEnergyBill).toLocaleString()}` : "—"} editing={editing}>
+              <input type="number" min="0" value={form.monthlyEnergyBill} onChange={set("monthlyEnergyBill")} className={input} placeholder="800000" />
             </EditableField>
           </div>
         </section>

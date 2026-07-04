@@ -38,7 +38,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   // Enrich with application reference numbers
   const apps = await prisma.loanApplication.findMany({
     where: { id: { in: applicationIds } },
-    select: { id: true, referenceNumber: true, commodityType: true },
+    select: { id: true, referenceNumber: true, systemType: true },
   });
   const appMap = Object.fromEntries(apps.map((a) => [a.id, a]));
 
@@ -58,7 +58,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
       id: log.id,
       applicationId: log.entityId,
       referenceNumber: app?.referenceNumber?.slice(0, 8).toUpperCase() ?? "—",
-      commodityType: app?.commodityType ?? "",
+      systemType: app?.systemType ?? "",
       action: log.action,
       label: decision
         ? `Application ${decision.toLowerCase()}`
