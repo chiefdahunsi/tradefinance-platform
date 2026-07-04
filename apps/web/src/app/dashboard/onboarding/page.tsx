@@ -14,7 +14,11 @@ const NIGERIAN_STATES = [
   "Yobe","Zamfara",
 ];
 
-const STEPS = ["Business Details", "Energy & Financial Profile", "Directors / Guarantors"];
+const STEPS = [
+  { label: "Business Details", icon: "🏢" },
+  { label: "Energy & Financials", icon: "⚡" },
+  { label: "Directors / Guarantors", icon: "👤" },
+];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -35,21 +39,14 @@ export default function OnboardingPage() {
     email: "", percentOwned: "", isSignatory: true,
   }]);
 
-  const setBiz = (field: string) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => setBusiness((b) => ({ ...b, [field]: e.target.value }));
+  const setBiz = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setBusiness((b) => ({ ...b, [field]: e.target.value }));
 
-  const setDir = (i: number, field: string) => (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => setDirectors((dirs) =>
-    dirs.map((d, idx) => (idx === i ? { ...d, [field]: e.target.value } : d))
-  );
+  const setDir = (i: number, field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setDirectors((dirs) => dirs.map((d, idx) => (idx === i ? { ...d, [field]: e.target.value } : d)));
 
   const addDirector = () =>
-    setDirectors((d) => [
-      ...d,
-      { firstName: "", lastName: "", dateOfBirth: "", bvn: "", nin: "", phone: "", email: "", percentOwned: "", isSignatory: false },
-    ]);
+    setDirectors((d) => [...d, { firstName: "", lastName: "", dateOfBirth: "", bvn: "", nin: "", phone: "", email: "", percentOwned: "", isSignatory: false }]);
 
   const buildPayload = () => ({
     ...business,
@@ -59,87 +56,97 @@ export default function OnboardingPage() {
   });
 
   const saveBusinessProfile = async () => {
-    setLoading(true);
-    setError("");
-    setFieldErrors({});
-    try {
-      await api.post("/api/business", buildPayload());
-      setStep(1);
-    } catch (err: any) {
-      setFieldErrors(parseFieldErrors(err));
-      setError(parseApiError(err));
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setError(""); setFieldErrors({});
+    try { await api.post("/api/business", buildPayload()); setStep(1); }
+    catch (err: any) { setFieldErrors(parseFieldErrors(err)); setError(parseApiError(err)); }
+    finally { setLoading(false); }
   };
 
   const saveEnergyProfile = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      await api.post("/api/business", buildPayload());
-      setStep(2);
-    } catch (err: any) {
-      setError(parseApiError(err));
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setError("");
+    try { await api.post("/api/business", buildPayload()); setStep(2); }
+    catch (err: any) { setError(parseApiError(err)); }
+    finally { setLoading(false); }
   };
 
   const saveDirectors = async () => {
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       for (let i = 0; i < directors.length; i++) {
         const dir = directors[i];
-        if (dir.bvn.length !== 11) {
-          setError(`Director ${i + 1}: BVN must be exactly 11 digits.`);
-          setLoading(false);
-          return;
-        }
+        if (dir.bvn.length !== 11) { setError(`Director ${i + 1}: BVN must be exactly 11 digits.`); setLoading(false); return; }
         if (!dir.firstName || !dir.lastName || !dir.dateOfBirth || !dir.phone || !dir.email || !dir.percentOwned) {
-          setError(`Director ${i + 1}: Please fill in all required fields.`);
-          setLoading(false);
-          return;
+          setError(`Director ${i + 1}: Please fill in all required fields.`); setLoading(false); return;
         }
-        await api.post("/api/business/directors", {
-          ...dir,
-          percentOwned: parseFloat(dir.percentOwned),
-        });
+        await api.post("/api/business/directors", { ...dir, percentOwned: parseFloat(dir.percentOwned) });
       }
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(parseApiError(err));
-    } finally {
-      setLoading(false);
-    }
+    } catch (err: any) { setError(parseApiError(err)); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex items-center gap-3 mb-1">
-          <span className="text-green-600 text-xl">☀️</span>
-          <h1 className="text-lg font-bold text-slate-900">Set up your profile</h1>
+    <div className="min-h-screen" style={{ background: "#f8fafc" }}>
+      {/* Header */}
+      <header className="bg-white border-b border-slate-100 px-6">
+        <div className="max-w-2xl mx-auto flex items-center justify-between h-16">
+          <div className="flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+              style={{ background: "linear-gradient(135deg, #f5a623, #e8920f)" }}>☀</span>
+            <span className="font-display font-bold text-slate-900">SolarCredit</span>
+          </div>
+          <span className="text-slate-400 text-sm">Setting up your profile</span>
         </div>
-        <p className="text-slate-500 text-sm">Step {step + 1} of {STEPS.length} — {STEPS[step]}</p>
       </header>
 
-      <div className="h-1 bg-slate-100">
-        <div className="h-1 bg-green-500 transition-all duration-300" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+      {/* Progress bar */}
+      <div className="h-0.5 bg-slate-100">
+        <div className="h-0.5 transition-all duration-500"
+          style={{ width: `${((step + 1) / STEPS.length) * 100}%`, background: "linear-gradient(90deg, #f5a623, #e0850d)" }} />
       </div>
 
       <main className="max-w-2xl mx-auto px-6 py-10">
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-8">
+          {STEPS.map((s, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                  i < step ? "text-white" : i === step ? "text-white" : "text-slate-400 bg-slate-100"
+                }`}
+                  style={i <= step ? { background: i === step ? "linear-gradient(135deg, #f5a623, #e0850d)" : "#16a34a" } : {}}>
+                  {i < step ? "✓" : i + 1}
+                </div>
+                <span className={`text-sm font-medium hidden sm:block ${i === step ? "text-slate-900" : i < step ? "text-green-600" : "text-slate-400"}`}>
+                  {s.label}
+                </span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <div className="w-8 h-px mx-1" style={{ background: i < step ? "#16a34a" : "#e2e8f0" }} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Step heading */}
+        <div className="mb-7">
+          <h1 className="font-display text-xl font-bold text-slate-900">
+            {STEPS[step].icon} {STEPS[step].label}
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">Step {step + 1} of {STEPS.length}</p>
+        </div>
+
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">{error}</div>
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>
         )}
 
-        {/* Step 0: Business Details */}
+        {/* ── Step 0: Business Details ── */}
         {step === 0 && (
-          <div className="space-y-5">
+          <div className="bg-white rounded-2xl border border-slate-100 p-7 shadow-sm space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Registered Company Name *" error={fieldErrors.registeredName}>
-                <input value={business.registeredName} onChange={setBiz("registeredName")} required className={fieldErrors.registeredName ? inputError : input} placeholder="ABC Solar Ltd" />
+                <input value={business.registeredName} onChange={setBiz("registeredName")} required
+                  className={fieldErrors.registeredName ? inputError : input} placeholder="ABC Solar Ltd" />
               </Field>
               <Field label="Trading Name">
                 <input value={business.tradingName} onChange={setBiz("tradingName")} className={input} placeholder="If different" />
@@ -147,7 +154,8 @@ export default function OnboardingPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="CAC Number *" error={fieldErrors.cacNumber}>
-                <input value={business.cacNumber} onChange={setBiz("cacNumber")} required className={fieldErrors.cacNumber ? inputError : input} placeholder="RC123456" />
+                <input value={business.cacNumber} onChange={setBiz("cacNumber")} required
+                  className={fieldErrors.cacNumber ? inputError : input} placeholder="RC123456" />
               </Field>
               <Field label="Tax ID (TIN)">
                 <input value={business.taxId} onChange={setBiz("taxId")} className={input} placeholder="12345678-0001" />
@@ -156,21 +164,14 @@ export default function OnboardingPage() {
             <div className="grid grid-cols-2 gap-4">
               <Field label="Business Type *">
                 <select value={business.businessType} onChange={setBiz("businessType")} className={input}>
-                  <option>Limited</option>
-                  <option>Enterprise</option>
-                  <option>Partnership</option>
-                  <option>Individual</option>
+                  <option>Limited</option><option>Enterprise</option>
+                  <option>Partnership</option><option>Individual</option>
                 </select>
               </Field>
               <Field label="Sector *">
                 <select value={business.sector} onChange={setBiz("sector")} className={input}>
-                  <option>Commercial</option>
-                  <option>Industrial</option>
-                  <option>Healthcare</option>
-                  <option>Education</option>
-                  <option>Agro-Processing</option>
-                  <option>Residential</option>
-                  <option>Other</option>
+                  <option>Commercial</option><option>Industrial</option><option>Healthcare</option>
+                  <option>Education</option><option>Agro-Processing</option><option>Residential</option><option>Other</option>
                 </select>
               </Field>
             </div>
@@ -178,11 +179,13 @@ export default function OnboardingPage() {
               <input type="date" value={business.dateIncorporated} onChange={setBiz("dateIncorporated")} className={input} />
             </Field>
             <Field label="Registered Address *" error={fieldErrors.address}>
-              <input value={business.address} onChange={setBiz("address")} required className={fieldErrors.address ? inputError : input} placeholder="12 Commerce Road" />
+              <input value={business.address} onChange={setBiz("address")} required
+                className={fieldErrors.address ? inputError : input} placeholder="12 Commerce Road, Victoria Island" />
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="City *" error={fieldErrors.city}>
-                <input value={business.city} onChange={setBiz("city")} required className={fieldErrors.city ? inputError : input} placeholder="Lagos" />
+                <input value={business.city} onChange={setBiz("city")} required
+                  className={fieldErrors.city ? inputError : input} placeholder="Lagos" />
               </Field>
               <Field label="State *">
                 <select value={business.state} onChange={setBiz("state")} className={input}>
@@ -193,45 +196,52 @@ export default function OnboardingPage() {
             <Field label="Website">
               <input type="url" value={business.website} onChange={setBiz("website")} className={input} placeholder="https://yourcompany.com" />
             </Field>
-            <button onClick={saveBusinessProfile} disabled={loading} className={btn}>
-              {loading && <Spinner />} {loading ? "Saving..." : "Continue →"}
+            <button onClick={saveBusinessProfile} disabled={loading} className={btn}
+              style={{ background: "linear-gradient(135deg, #f5a623, #e0850d)" }}>
+              {loading && <Spinner />} {loading ? "Saving…" : "Continue →"}
             </button>
           </div>
         )}
 
-        {/* Step 1: Energy & Financial Profile */}
+        {/* ── Step 1: Energy & Financial Profile ── */}
         {step === 1 && (
           <div className="space-y-5">
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-2">
-              <p className="text-sm text-green-800 font-medium">💡 Why we ask this</p>
-              <p className="text-xs text-green-700 mt-1">Your energy spend and financial history help us determine how much you can save with solar and the right loan size for you.</p>
+            <div className="rounded-xl px-5 py-4 border"
+              style={{ background: "rgba(245,166,35,0.06)", borderColor: "rgba(245,166,35,0.2)" }}>
+              <p className="text-sm font-semibold mb-1" style={{ color: "#b45309" }}>💡 Why we ask this</p>
+              <p className="text-xs text-amber-700">Your energy spend and financial profile help us determine the right loan size and how much you stand to save with solar.</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Years in Operation" hint="How long has the business been running?">
-                <input type="number" min="0" value={business.yearsInOperation} onChange={setBiz("yearsInOperation")} className={input} placeholder="5" />
-              </Field>
-              <Field label="Annual Turnover (₦)" hint="Approximate annual revenue">
-                <input type="number" min="0" value={business.annualTurnover} onChange={setBiz("annualTurnover")} className={input} placeholder="50,000,000" />
+
+            <div className="bg-white rounded-2xl border border-slate-100 p-7 shadow-sm space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Years in Operation" hint="How long has the business been running?">
+                  <input type="number" min="0" value={business.yearsInOperation} onChange={setBiz("yearsInOperation")} className={input} placeholder="5" />
+                </Field>
+                <Field label="Annual Turnover (₦)" hint="Approximate annual revenue">
+                  <input type="number" min="0" value={business.annualTurnover} onChange={setBiz("annualTurnover")} className={input} placeholder="50,000,000" />
+                </Field>
+              </div>
+              <Field label="Monthly Electricity / Generator Cost (₦) *" hint="Average monthly spend on DISCO bills + diesel combined — drives your loan sizing">
+                <input type="number" min="0" value={business.monthlyEnergyBill} onChange={setBiz("monthlyEnergyBill")} className={input} placeholder="800,000" />
               </Field>
             </div>
-            <Field label="Monthly Electricity / Generator Cost (₦) *" hint="Average monthly spend on DISCO bills + diesel combined — this drives your loan sizing">
-              <input type="number" min="0" value={business.monthlyEnergyBill} onChange={setBiz("monthlyEnergyBill")} className={input} placeholder="800,000" />
-            </Field>
+
             <div className="flex gap-3">
               <button onClick={() => setStep(0)} className={btnOutline}>← Back</button>
-              <button onClick={saveEnergyProfile} disabled={loading} className={btn}>
-                {loading && <Spinner />}{loading ? "Saving..." : "Continue →"}
+              <button onClick={saveEnergyProfile} disabled={loading} className={btn}
+                style={{ background: "linear-gradient(135deg, #f5a623, #e0850d)" }}>
+                {loading && <Spinner />} {loading ? "Saving…" : "Continue →"}
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 2: Directors / Guarantors */}
+        {/* ── Step 2: Directors / Guarantors ── */}
         {step === 2 && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {directors.map((dir, i) => (
-              <div key={i} className="bg-white rounded-xl border border-slate-200 p-5">
-                <h3 className="font-medium text-slate-900 mb-4">Director / Guarantor {i + 1}</h3>
+              <div key={i} className="bg-white rounded-2xl border border-slate-100 p-7 shadow-sm">
+                <h3 className="font-display font-semibold text-slate-900 mb-5">Director / Guarantor {i + 1}</h3>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <Field label="First Name *">
@@ -271,8 +281,9 @@ export default function OnboardingPage() {
             </button>
             <div className="flex gap-3">
               <button onClick={() => setStep(1)} className={btnOutline}>← Back</button>
-              <button onClick={saveDirectors} disabled={loading} className={btn}>
-                {loading && <Spinner />} {loading ? "Saving..." : "Complete Profile →"}
+              <button onClick={saveDirectors} disabled={loading} className={btn}
+                style={{ background: "linear-gradient(135deg, #f5a623, #e0850d)" }}>
+                {loading && <Spinner />} {loading ? "Saving…" : "Complete Profile →"}
               </button>
             </div>
           </div>
@@ -285,7 +296,7 @@ export default function OnboardingPage() {
 function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+      <label className="block text-sm font-semibold text-slate-700 mb-1.5">{label}</label>
       {hint && <p className="text-xs text-slate-400 mb-1.5">{hint}</p>}
       {children}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
@@ -293,7 +304,10 @@ function Field({ label, hint, error, children }: { label: string; hint?: string;
   );
 }
 
-const input = "w-full border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white";
-const inputError = "w-full border border-red-400 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent bg-white";
-const btn = "flex items-center gap-2 bg-green-600 hover:bg-green-500 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-lg transition-colors";
-const btnOutline = "border border-slate-200 hover:border-slate-400 text-slate-600 font-medium px-6 py-2.5 rounded-lg transition-colors";
+const input = "w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50 transition-colors";
+const inputError = "w-full border border-red-400 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent bg-white";
+const btn = "flex items-center gap-2 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md";
+const btnOutline = "border border-slate-200 hover:border-slate-300 text-slate-600 font-medium px-6 py-2.5 rounded-xl transition-colors";
+
+// Inject gradient into btn dynamically via inline style — defined as class stub above
+// We use style prop on the button elements directly for the gradient
