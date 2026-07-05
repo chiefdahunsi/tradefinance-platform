@@ -125,6 +125,8 @@ export default function AnalystApplicationPage() {
   const [reviewingDoc, setReviewingDoc] = useState<string | null>(null);
   const [rejectionInputs, setRejectionInputs] = useState<Record<string, string>>({});
   const [showRejectionBox, setShowRejectionBox] = useState<Record<string, boolean>>({});
+  const [mdModal, setMdModal] = useState<{ docId: string; fileName: string; markdown: string } | null>(null);
+  const [loadingMd, setLoadingMd] = useState<string | null>(null);
 
   const handleDocReview = async (docId: string, status: "APPROVED" | "REJECTED") => {
     if (status === "REJECTED" && !rejectionInputs[docId]?.trim()) {
@@ -143,6 +145,19 @@ export default function AnalystApplicationPage() {
       setError(err?.response?.data?.message || "Review failed");
     } finally {
       setReviewingDoc(null);
+    }
+  };
+
+  const readAsMarkdown = async (docId: string, fileName: string) => {
+    setLoadingMd(docId);
+    setError("");
+    try {
+      const { data } = await api.get(`/api/documents/${docId}/markdown`);
+      setMdModal({ docId, fileName, markdown: data.data.markdown });
+    } catch (err: any) {
+      setError(parseApiError(err));
+    } finally {
+      setLoadingMd(null);
     }
   };
 
@@ -560,6 +575,13 @@ export default function AnalystApplicationPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => readAsMarkdown(doc.id, doc.fileName)}
+                            disabled={loadingMd === doc.id}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-400 disabled:opacity-50 flex items-center gap-1 transition-colors"
+                          >
+                            {loadingMd === doc.id ? <><Spinner className="w-3 h-3" /> Reading…</> : "📄 Read"}
+                          </button>
                           <DocumentLink documentId={doc.id} fileName={doc.fileName} />
                           {doc.status !== "APPROVED" && (
                             <button
@@ -826,6 +848,46 @@ export default function AnalystApplicationPage() {
           </Section>
         )}
       </div>
+      {/* Markdown viewer modal */}
+      {mdModal && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 px-4 pb-8"
+          style={{ background: "rgba(7,12,26,0.7)", backdropFilter: "blur(4px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setMdModal(null); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[85vh]">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+              <div>
+                <h3 className="font-display font-semibold text-slate-900">Document Content</h3>
+                <p className="text-xs text-slate-400 mt-0.5 truncate max-w-md">{mdModal.fileName}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                  style={{ background: "rgba(245,166,35,0.12)", color: "#92400e" }}>
+                  Converted by markitdown
+                </span>
+                <button onClick={() => setMdModal(null)}
+                  className="text-slate-400 hover:text-slate-700 w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-lg transition-colors">
+                  ✕
+                </button>
+              </div>
+            </div>
+            {/* Scrollable markdown body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              <pre className="whitespace-pre-wrap text-sm text-slate-700 font-mono leading-relaxed">
+                {mdModal.markdown || "(No text content extracted)"}
+              </pre>
+            </div>
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-slate-50 shrink-0 flex justify-end">
+              <button
+                onClick={() => navigator.clipboard.writeText(mdModal.markdown)}
+                className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 transition-colors">
+                Copy Markdown
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AnalystShell>
   );
 }

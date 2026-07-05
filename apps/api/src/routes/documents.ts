@@ -5,6 +5,9 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuid } from "uuid";
 import path from "path";
 import fs from "fs";
+import os from "os";
+import { spawn } from "child_process";
+import { Readable } from "stream";
 import { prisma } from "@tradefinance/db";
 import { requireAuth, AuthRequest, requireRole } from "../middleware/auth";
 import { sendDocumentRejected } from "../services/email";
@@ -216,6 +219,70 @@ router.get("/:documentId/url", async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ success: false, message: "Could not generate download link." });
   }
 });
+
+// Convert a document to Markdown using markitdown (analyst/admin only)
+router.get(
+  "/:documentId/markdown",
+  requireRole("ANALYST", "ADMIN"),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const doc = await prisma.document.findUnique({
+        where: { id: req.params.documentId },
+        include: { application: { include: { business: true } } },
+      });
+
+      if (!doc) return res.status(404).json({ success: false, message: "Document not found." });
+
+      // Fetch the file bytes
+      let fileBuffer: Buffer;
+      if (S3_CONFIGURED && s3 && doc.fileUrl.startsWith("s3://")) {
+        const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: doc.fileKey }));
+        const chunks: Buffer[] = [];
+        for await (const chunk of obj.Body as Readable) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        fileBuffer = Buffer.concat(chunks);
+      } else {
+        const localPath = path.join(process.cwd(), doc.fileUrl);
+        fileBuffer = fs.readFileSync(localPath);
+      }
+
+      // Write to a temp file so markitdown can read it
+      const ext = path.extname(doc.fileName) || ".pdf";
+      const tmpFile = path.join(os.tmpdir(), `${uuid()}${ext}`);
+      fs.writeFileSync(tmpFile, fileBuffer);
+
+      // Run markitdown <tmpFile> and collect stdout
+      const markdown = await new Promise<string>((resolve, reject) => {
+        let out = "";
+        let err = "";
+        const proc = spawn("python3", ["-m", "markitdown", tmpFile]);
+        proc.stdout.on("data", (d: Buffer) => { out += d.toString(); });
+        proc.stderr.on("data", (d: Buffer) => { err += d.toString(); });
+        proc.on("close", (code) => {
+          fs.unlink(tmpFile, () => {});
+          if (code !== 0) return reject(new Error(err || `markitdown exited with code ${code}`));
+          resolve(out);
+        });
+        proc.on("error", (e) => {
+          fs.unlink(tmpFile, () => {});
+          reject(e);
+        });
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          documentId: doc.id,
+          fileName: doc.fileName,
+          documentType: doc.type,
+          markdown,
+        },
+      });
+    } catch (err: any) {
+      console.error("[markitdown]", err?.message || err);
+      return res.status(500).json({ success: false, message: `Conversion failed: ${err?.message || "unknown error"}` });
+    }
+  }
+);
 
 // Analyst: approve or reject a single document
 router.patch(
