@@ -1,10 +1,30 @@
 import { Router, Response } from "express";
 import { z } from "zod";
+import { S3Client } from "@aws-sdk/client-s3";
 import { prisma, Prisma } from "@tradefinance/db";
 import { requireAuth, AuthRequest, requireRole } from "../middleware/auth";
 import { generateCreditProfile } from "../services/scoring";
+import { analyseDocuments } from "../services/documentAnalysis";
 import { sendDecision, sendUnderReview } from "../services/email";
 import { audit, AuditAction } from "../services/audit";
+
+const S3_CONFIGURED =
+  !!process.env.AWS_ACCESS_KEY_ID &&
+  !!process.env.AWS_SECRET_ACCESS_KEY &&
+  !!process.env.S3_BUCKET &&
+  process.env.AWS_ACCESS_KEY_ID !== "";
+
+const s3 = S3_CONFIGURED
+  ? new S3Client({
+      region: process.env.AWS_REGION || "eu-west-1",
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      },
+    })
+  : null;
+
+const BUCKET = process.env.S3_BUCKET || "";
 
 const router = Router();
 router.use(requireAuth, requireRole("ANALYST", "ADMIN"));
@@ -86,7 +106,17 @@ router.post(
         .json({ success: false, message: "Application not found" });
     }
 
-    const profile = await generateCreditProfile(application as any);
+    // Convert uploaded documents to Markdown and extract financial indicators
+    console.log(`[generate-profile] Analysing ${application.documents.length} document(s) via markitdown + Claude…`);
+    let docInsights;
+    try {
+      docInsights = await analyseDocuments(application.documents, s3, BUCKET);
+      console.log(`[generate-profile] Document analysis complete. Summarised: ${docInsights.documentsSummarized.join(", ") || "none"}`);
+    } catch (err: any) {
+      console.error("[generate-profile] Document analysis failed, scoring without it:", err?.message ?? err);
+    }
+
+    const profile = await generateCreditProfile(application as any, docInsights);
 
     // Prisma requires Prisma.DbNull for nullable JSON fields, not plain null
     const bureauRawData = profile.bureauRawData ?? Prisma.DbNull;
