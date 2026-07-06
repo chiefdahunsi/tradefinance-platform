@@ -10,8 +10,8 @@ import { parseApiError } from "@/lib/errors";
 const DOCUMENT_TYPES = [
   { value: "CAC_CERTIFICATE",   label: "CAC Certificate",                        required: true,  hint: "Certificate of Incorporation issued by CAC" },
   { value: "CAC_STATUS_REPORT", label: "CAC Status Report",                      required: true,  hint: "Current status report showing the company is active" },
-  { value: "MEMART",            label: "MEMART / Articles of Association",       required: true,  hint: "Required for all limited liability companies" },
-  { value: "AUDITED_FINANCIALS",label: "Audited Financial Statements (3 Years)", required: true,  hint: "Audited accounts for the last 3 financial years, signed by a registered auditor" },
+  { value: "MEMART",            label: "MEMART / Articles of Association",       required: false, hint: "Required for limited liability companies — share if available" },
+  { value: "AUDITED_FINANCIALS",label: "Audited Financial Statements (3 Years)", required: false, hint: "Share if available — audited accounts for the last 3 financial years, signed by a registered auditor" },
   { value: "BANK_STATEMENT",    label: "Bank Statement (Last 12 Months)",        required: true,  hint: "Full 12-month statement for your primary account, stamped by the bank" },
   { value: "ELECTRICITY_BILL",  label: "Recent Electricity / Generator Bill",    required: true,  hint: "Last 3 months of DISCO bills or diesel invoices" },
   { value: "INSTALLATION_QUOTE",label: "Installer Quotation",                    required: false, hint: "Share this if you already have a quote from a certified solar installer — we can also help you get one" },
