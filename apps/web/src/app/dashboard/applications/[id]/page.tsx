@@ -14,7 +14,7 @@ const DOCUMENT_TYPES = [
   { value: "AUDITED_FINANCIALS",label: "Audited Financial Statements (3 Years)", required: true,  hint: "Audited accounts for the last 3 financial years, signed by a registered auditor" },
   { value: "BANK_STATEMENT",    label: "Bank Statement (Last 12 Months)",        required: true,  hint: "Full 12-month statement for your primary account, stamped by the bank" },
   { value: "ELECTRICITY_BILL",  label: "Recent Electricity / Generator Bill",    required: true,  hint: "Last 3 months of DISCO bills or diesel invoices" },
-  { value: "INSTALLATION_QUOTE",label: "Installer Quotation",                    required: true,  hint: "Formal quote from a certified solar installer" },
+  { value: "INSTALLATION_QUOTE",label: "Installer Quotation",                    required: false, hint: "Share this if you already have a quote from a certified solar installer — we can also help you get one" },
   { value: "SITE_ASSESSMENT",   label: "Site Assessment Report",                 required: false, hint: "Technical assessment of the installation site" },
   { value: "PROPERTY_PROOF",    label: "Proof of Property Ownership / Tenancy",  required: true,  hint: "Certificate of Occupancy, deed of assignment, or tenancy agreement" },
   { value: "DIRECTORS_ID",      label: "Directors' / Guarantors' ID",            required: true,  hint: "Valid government-issued ID for each director or guarantor" },
