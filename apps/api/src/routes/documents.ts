@@ -102,7 +102,7 @@ router.post(
         if (application.businessId !== business?.id) {
           return res.status(403).json({ success: false, message: "Access denied." });
         }
-        const terminalStatuses = ["APPROVED", "DISBURSED"];
+        const terminalStatuses = ["APPROVED"];
         if (terminalStatuses.includes(application.status)) {
           return res.status(400).json({ success: false, message: "Cannot upload documents to a finalised application." });
         }

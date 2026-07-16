@@ -54,9 +54,10 @@ async function toMarkdown(buffer: Buffer, ext: string): Promise<string> {
     const proc = spawn("python3", ["-m", "markitdown", tmpFile]);
     proc.stdout.on("data", (d: Buffer) => { out += d.toString(); });
     proc.stderr.on("data", (d: Buffer) => { errOut += d.toString(); });
-    proc.on("close", () => {
+    proc.on("close", (code) => {
       fs.unlink(tmpFile, () => {});
-      resolve(out.trim() || `[No text extracted: ${errOut.trim() || "empty"}]`);
+      if (code !== 0) resolve(`[markitdown exited with code ${code}: ${errOut.trim() || "no detail"}]`);
+      else resolve(out.trim() || "[No text extracted — document may be empty or image-only]");
     });
     proc.on("error", () => {
       fs.unlink(tmpFile, () => {});
@@ -109,7 +110,7 @@ const naira = (keyword: string) =>
   new RegExp(`${keyword}[\\s\\S]{0,60}?[₦N]\\s*([\\d,]+(?:\\.\\d{1,2})?)`, "i");
 
 const nairaAfter = (keyword: string) =>
-  new RegExp(`${keyword}[\\s:]+[₦N]?\\s*([\\d,]+(?:\\.\\d{1,2})?)`, "i");
+  new RegExp(`${keyword}[\\s:]+(?:₦|NGN\\s*)?([\\d,]+(?:\\.\\d{1,2})?)`, "i");
 
 // ── Document-type decision trees ──────────────────────────────────────────────
 

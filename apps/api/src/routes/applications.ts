@@ -161,6 +161,14 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
 
 // Get audit timeline for an application
 router.get("/:id/timeline", async (req: AuthRequest, res: Response) => {
+  // SMEs can only view timeline for their own applications
+  if (req.user!.role === "SME_OWNER") {
+    const business = await prisma.business.findUnique({ where: { userId: req.user!.userId } });
+    const application = await prisma.loanApplication.findUnique({ where: { id: req.params.id } });
+    if (!application || application.businessId !== business?.id) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+  }
   const logs = await prisma.auditLog.findMany({
     where: { entityType: "LoanApplication", entityId: req.params.id },
     orderBy: { createdAt: "asc" },
@@ -181,7 +189,7 @@ router.get(
       prisma.loanApplication.findMany({
         where,
         include: {
-          business: { select: { registeredName: true, cacNumber: true, commodities: true, state: true } },
+          business: { select: { registeredName: true, cacNumber: true, state: true } },
           creditProfile: { select: { totalScore: true, scoreGrade: true, recommendation: true } },
           analystReview: { select: { decision: true, analystId: true } },
         },
@@ -259,7 +267,7 @@ async function runKYCChecks(applicationId: string) {
   });
 
   // Update application status based on results
-  const anyFailed = checks.every((c) => c.status === "FAILED");
+  const anyFailed = checks.some((c) => c.status === "FAILED");
   const allPassed = checks.every((c) => c.status === "PASSED");
   const finalStatus = anyFailed ? "KYC_FAILED" : allPassed ? "KYC_VERIFIED" : "KYC_PENDING";
 

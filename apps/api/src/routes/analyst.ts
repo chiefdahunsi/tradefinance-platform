@@ -194,7 +194,7 @@ router.get("/queue", async (req: AuthRequest, res: Response) => {
     include: {
       application: {
         include: {
-          business: { select: { registeredName: true, commodities: true, state: true } },
+          business: { select: { registeredName: true, state: true } },
           creditProfile: { select: { totalScore: true, scoreGrade: true, recommendation: true } },
         },
       },

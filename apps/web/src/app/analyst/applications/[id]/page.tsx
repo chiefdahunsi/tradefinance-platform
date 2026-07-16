@@ -34,10 +34,8 @@ interface FullApplication {
     city: string;
     state: string;
     website?: string;
-    commodities: string[];
     yearsInOperation?: number;
     annualTurnover?: number;
-    exportMarkets: string[];
     directors: {
       id: string;
       firstName: string;
